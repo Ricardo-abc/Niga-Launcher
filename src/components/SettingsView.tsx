@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import { useSettingsContext } from '../context/SettingsContext';
-import { DevModeTrigger, GeneralSettings, DevSettings } from './settings';
+import { DevModeTrigger, GeneralSettings, DevSettings, VibrationSettings } from './settings';
 import { EffectLayer } from '../effects';
+import { t } from '../i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -13,6 +14,7 @@ interface SettingsViewProps {
 const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
   const { settings, updateSetting, resetSettings, handleDevModeClick } = useSettingsContext();
   const [activeTab, setActiveTab] = useState<'general' | 'dev'>('general');
+  const [showVibrationSettings, setShowVibrationSettings] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   const bgEnabled = settings.enableBackgroundImage && settings.wallpapers.length > 0;
@@ -32,6 +34,23 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
     inputRange: [0, 1],
     outputRange: [0, -SCREEN_WIDTH],
   });
+
+  if (showVibrationSettings) {
+    return (
+      <EffectLayer
+        effectKey={bgEnabled ? settings.overlayEffect : ''}
+        intensity={settings.overlayEffectIntensity}
+        style={styles.effectLayer}
+      >
+        <VibrationSettings
+          settings={settings}
+          onUpdate={updateSetting}
+          onConfirm={() => setShowVibrationSettings(false)}
+          onBack={() => setShowVibrationSettings(false)}
+        />
+      </EffectLayer>
+    );
+  }
 
   return (
     <EffectLayer
@@ -64,7 +83,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'general' && styles.tabTextActive]}>
-              通用
+              {t('settings.general')}
             </Text>
             {activeTab === 'general' && <View style={styles.tabIndicator} />}
           </TouchableOpacity>
@@ -75,7 +94,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'dev' && styles.tabTextActive]}>
-              开发者
+              {t('settings.developer')}
             </Text>
             {activeTab === 'dev' && <View style={styles.tabIndicator} />}
           </TouchableOpacity>
@@ -89,14 +108,22 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
             style={[styles.contentSlider, { transform: [{ translateX }] }]}
           >
             <View style={styles.page}>
-              <GeneralSettings settings={settings} onUpdate={updateSetting} />
+              <GeneralSettings
+                settings={settings}
+                onUpdate={updateSetting}
+                onNavigateToVibration={() => setShowVibrationSettings(true)}
+              />
             </View>
             <View style={styles.page}>
               <DevSettings settings={settings} onUpdate={updateSetting} onReset={resetSettings} />
             </View>
           </Animated.View>
         ) : (
-          <GeneralSettings settings={settings} onUpdate={updateSetting} />
+          <GeneralSettings
+            settings={settings}
+            onUpdate={updateSetting}
+            onNavigateToVibration={() => setShowVibrationSettings(true)}
+          />
         )}
       </View>
       </View>

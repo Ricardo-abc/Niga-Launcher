@@ -1,6 +1,7 @@
-﻿import React from 'react';
+import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform, PermissionsAndroid } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { AppSettings } from '../../types/settings';
 import SettingModule from './SettingModule';
 import { SettingItem, SettingToggle, SettingSelector, SettingSliderItem } from './SettingItems';
@@ -52,19 +53,29 @@ const BackgroundModule: React.FC<BackgroundModuleProps> = ({ settings, onUpdate 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 0.7,
-        base64: true,
+        base64: false,
       });
 
-      if (result.canceled || !result.assets[0]?.base64) return;
+      if (result.canceled || !result.assets[0]?.uri) return;
 
-      const dataUri = 'data:image/jpeg;base64,' + result.assets[0].base64;
-      const newList = [...settings.wallpapers, dataUri];
+      const sourceUri = result.assets[0].uri;
+      const dir = `${FileSystem.documentDirectory}wallpapers/`;
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      const filename = `wallpaper_${Date.now()}.jpg`;
+      const destUri = `${dir}${filename}`;
+
+      await FileSystem.copyAsync({
+        from: sourceUri,
+        to: destUri,
+      });
+
+      const newList = [...settings.wallpapers, destUri];
       onUpdate('wallpapers', newList);
 
       if (newList.length === 1) {
         onUpdate('enableBackgroundImage', true);
         onUpdate('currentWallpaperIndex', 0);
-        setWallpaper(dataUri);
+        setWallpaper(destUri);
       }
     } catch (e) {
       console.error('[Wallpaper] Add failed:', e);
@@ -129,6 +140,7 @@ const BackgroundModule: React.FC<BackgroundModuleProps> = ({ settings, onUpdate 
         text: '删除',
         style: 'destructive',
         onPress: () => {
+          const uri = settings.wallpapers[index];
           const newList = settings.wallpapers.filter((_, i) => i !== index);
           let newIndex = settings.currentWallpaperIndex;
           if (newList.length === 0) {
@@ -141,6 +153,12 @@ const BackgroundModule: React.FC<BackgroundModuleProps> = ({ settings, onUpdate 
           }
           onUpdate('wallpapers', newList);
           onUpdate('currentWallpaperIndex', newIndex);
+
+          if (uri && uri.startsWith('file://')) {
+            FileSystem.deleteAsync(uri, { idempotent: true }).catch(err => {
+              console.error('[Wallpaper] File delete failed:', err);
+            });
+          }
         },
       },
     ]);

@@ -13,14 +13,15 @@ import BackgroundModule from './BackgroundModule';
 interface GeneralSettingsProps {
   settings: AppSettings;
   onUpdate: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
+  onNavigateToVibration?: () => void;
 }
 
-const GeneralSettings: React.FC<GeneralSettingsProps> = ({ settings, onUpdate }) => {
+const GeneralSettings: React.FC<GeneralSettingsProps> = ({ settings, onUpdate, onNavigateToVibration }) => {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <BackgroundModule settings={settings} onUpdate={onUpdate} />
       <AppearanceModule settings={settings} onUpdate={onUpdate} />
-      <RailModule settings={settings} onUpdate={onUpdate} />
+      <RailModule settings={settings} onUpdate={onUpdate} onNavigateToVibration={onNavigateToVibration} />
       <BubbleModule settings={settings} onUpdate={onUpdate} />
       <AppListModule settings={settings} onUpdate={onUpdate} />
       <FavoritesModule settings={settings} onUpdate={onUpdate} />

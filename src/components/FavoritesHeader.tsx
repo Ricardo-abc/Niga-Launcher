@@ -4,6 +4,7 @@ import { loadFavorites, launchApplication } from '../services/AppService';
 import { useSettingsContext } from '../context/SettingsContext';
 import { AppInfo, AppCustomizations } from '../types/settings';
 import { LETTER_COLORS } from '../constants/defaultSettings';
+import { t } from '../i18n';
 
 interface FavoritesHeaderProps {
   onLayout?: (height: number) => void;
@@ -116,12 +117,12 @@ const FavoritesHeader: React.FC<FavoritesHeaderProps> = ({
       <View style={styles.topSection}>
         <Text style={[styles.clockText, { fontSize: 64 * settings.fontScale }]}>{hours}:{minutes}</Text>
         <Text style={styles.dateText}>{dateStr}</Text>
-        <Text style={styles.hintText}>★ 收藏常用应用，长按可管理</Text>
+        <Text style={styles.hintText}>{t('favorites.hint')}</Text>
       </View>
 
       {favorites.length > 0 ? (
         <View style={styles.favoritesSection}>
-          <Text style={styles.sectionTitle}>收藏的应用</Text>
+          <Text style={styles.sectionTitle}>{t('favorites.sectionTitle')}</Text>
           {settings.favoritesDisplayStyle === 'list' ? (
             <View style={styles.favoritesList}>
               {favorites.map((app) => renderListItem(app))}
@@ -163,9 +164,9 @@ const FavoritesHeader: React.FC<FavoritesHeaderProps> = ({
         </View>
       ) : (
         <View style={styles.emptySection}>
-          <Text style={styles.emptyIcon}>★</Text>
-          <Text style={styles.emptyText}>还没有收藏的应用</Text>
-          <Text style={styles.emptyHint}>在全部应用中长按应用可添加到收藏</Text>
+          <Text style={styles.emptyIcon}>{t('favorites.emptyIcon')}</Text>
+          <Text style={styles.emptyText}>{t('favorites.emptyText')}</Text>
+          <Text style={styles.emptyHint}>{t('favorites.emptyHint')}</Text>
         </View>
       )}
     </View>

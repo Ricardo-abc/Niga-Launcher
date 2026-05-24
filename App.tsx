@@ -15,7 +15,7 @@ import {
   BackHandler,
   InteractionManager,
 } from 'react-native';
-import ReactNativeHapticFeedback, { pattern } from 'react-native-haptic-feedback';
+import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 
 import AppItem from './src/components/AppItem';
 import LetterRail from './src/components/LetterRail';
@@ -25,6 +25,7 @@ import SettingsView from './src/components/SettingsView';
 import AppContextMenu from './src/components/AppContextMenu';
 import EditAppDialog from './src/components/EditAppDialog';
 import WallpaperBackground from './src/components/WallpaperBackground';
+import EffectLayer from './src/effects/EffectLayer';
 import {
   loadInstalledApps,
   loadCachedApps,
@@ -42,7 +43,8 @@ import {
 import { SettingsProvider, useSettingsContext } from './src/context/SettingsContext';
 import { AppInfo, AppCustomization, AppCustomizations, AppSettings } from './src/types/settings';
 import { ALPHABET, GESTURE_STRIP_WIDTH, HEADER_HEIGHT, ITEM_HEIGHT, RAIL_BOTTOM_PADDING } from './src/constants/defaultSettings';
-import { useActiveAlphabet } from './src/hooks/useActiveAlphabet';
+import { useRailAlphabet } from './src/hooks/useActiveAlphabet';
+import { t } from './src/i18n';
 
 const { height, width } = Dimensions.get('window');
 
@@ -51,28 +53,16 @@ const hapticOptions = {
   ignoreAndroidSystemSettings: false,
 };
 
-// 根据强度生成震动模式
-const intensityPatterns: Record<number, ReturnType<typeof pattern>> = {
-  1: pattern('o'),           // 轻微
-  2: pattern('o.o'),         // 较轻
-  3: pattern('O'),           // 中等
-  4: pattern('O.O'),         // 较强
-  5: pattern('OO'),          // 强烈
-};
-
 function triggerHaptic(effect: AppSettings['vibrationEffect'], intensity: number = 3) {
   if (effect === 'system') {
     Vibration.vibrate(4 * intensity);
     return;
   }
-  // 使用强度模式
-  const hapticPattern = intensityPatterns[intensity] || intensityPatterns[3];
-  ReactNativeHapticFeedback.triggerPattern(hapticPattern, hapticOptions);
+  ReactNativeHapticFeedback.trigger(effect, hapticOptions);
 }
 
 function AppContent() {
   const { settings, isLoaded } = useSettingsContext();
-  const activeAlphabet = useActiveAlphabet();
 
   // ===== State =====
   const [isSliding, setIsSliding] = useState(false);
@@ -81,6 +71,8 @@ function AppContent() {
   const [showSettings, setShowSettings] = useState(false);
   const [cachedApps, setCachedApps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const { alphabet: activeAlphabet } = useRailAlphabet(cachedApps);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [favoritesHeight, setFavoritesHeight] = useState(
@@ -159,6 +151,39 @@ function AppContent() {
   const [scrubOffsets, setScrubOffsets] = useState<number[]>([]);
 
   useEffect(() => { flatItemsRef.current = flatItems; }, [flatItems]);
+
+  // 预计算每个字母对应的 Scrub 数据 (只保留能展示在屏幕内的最大数量条目)
+  const scrubDataMap = useMemo(() => {
+    const map: Record<string, { items: FlatItem[]; offsets: number[] }> = {};
+    const maxVisibleItems = Math.ceil((height * (1 - settings.focusScrollRatio)) / settings.appItemHeight) + 2;
+
+    ALPHABET.forEach(letter => {
+      const startIdx = letterIndexMap[letter];
+      if (startIdx !== undefined) {
+        let endIdx = flatItems.length;
+        for (let i = startIdx + 1; i < flatItems.length; i++) {
+          if (flatItems[i]._type === 'header') {
+            endIdx = i;
+            break;
+          }
+        }
+        const sliced = flatItems.slice(startIdx, Math.min(startIdx + maxVisibleItems, endIdx));
+        const offsets: number[] = [];
+        let off = 0;
+        for (const item of sliced) {
+          offsets.push(off);
+          off += item._type === 'header' ? HEADER_HEIGHT : settings.appItemHeight;
+        }
+        map[letter] = { items: sliced, offsets };
+      }
+    });
+    return map;
+  }, [flatItems, letterIndexMap, settings.focusScrollRatio, settings.appItemHeight]);
+
+  const scrubDataMapRef = useRef(scrubDataMap);
+  useEffect(() => {
+    scrubDataMapRef.current = scrubDataMap;
+  }, [scrubDataMap]);
 
   // ===== 初始化 =====
   useEffect(() => {
@@ -263,22 +288,13 @@ function AppContent() {
     // 更新 Scrub 数据（A-Z 且字母变化时，且开关开启）
     if (settings.enableScrubMode && newLetter >= 'A' && newLetter <= 'Z' && scrubLetterRef.current !== newLetter) {
       scrubLetterRef.current = newLetter;
-      const startIdx = letterIndexMapRef.current[newLetter];
-      if (startIdx !== undefined) {
-        const items = flatItemsRef.current;
-        let endIdx = items.length;
-        for (let i = startIdx + 1; i < items.length; i++) {
-          if (items[i]._type === 'header') { endIdx = i; break; }
-        }
-        const sliced = items.slice(startIdx, endIdx);
-        setScrubItems(sliced);
-        const offsets: number[] = [];
-        let off = 0;
-        for (const item of sliced) {
-          offsets.push(off);
-          off += item._type === 'header' ? HEADER_HEIGHT : settings.appItemHeight;
-        }
-        setScrubOffsets(offsets);
+      const data = scrubDataMapRef.current[newLetter];
+      if (data) {
+        setScrubItems(data.items);
+        setScrubOffsets(data.offsets);
+      } else {
+        setScrubItems([]);
+        setScrubOffsets([]);
       }
     }
   };
@@ -373,24 +389,15 @@ function AppContent() {
 
     // 进入 Scrub（开关开启且 A-Z 才触发）
     if (settings.enableScrubMode && newLetter >= 'A' && newLetter <= 'Z') {
-      const startIdx = letterIndexMapRef.current[newLetter];
-      if (startIdx !== undefined) {
-        scrubLetterRef.current = newLetter;
-        const items = flatItemsRef.current;
-        let endIdx = items.length;
-        for (let i = startIdx + 1; i < items.length; i++) {
-          if (items[i]._type === 'header') { endIdx = i; break; }
-        }
-        const sliced = items.slice(startIdx, endIdx);
-        setScrubItems(sliced);
-        const offsets: number[] = [];
-        let off = 0;
-        for (const item of sliced) {
-          offsets.push(off);
-          off += item._type === 'header' ? HEADER_HEIGHT : settings.appItemHeight;
-        }
-        setScrubOffsets(offsets);
-        Animated.timing(scrubOpacity, { toValue: 1, duration: 100, useNativeDriver: true }).start();
+      scrubLetterRef.current = newLetter;
+      const data = scrubDataMapRef.current[newLetter];
+      if (data) {
+        setScrubItems(data.items);
+        setScrubOffsets(data.offsets);
+        Animated.parallel([
+          Animated.timing(scrubOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+          Animated.timing(listOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+        ]).start();
       }
     }
   };
@@ -428,7 +435,10 @@ function AppContent() {
         // 退出 Scrub：淡出 overlay
         if (scrubLetterRef.current) {
           scrubLetterRef.current = null;
-          Animated.timing(scrubOpacity, { toValue: 0, duration: 100, useNativeDriver: true }).start(() => {
+          Animated.parallel([
+            Animated.timing(scrubOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+            Animated.timing(listOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+          ]).start(() => {
             setScrubItems([]);
             setScrubOffsets([]);
           });
@@ -468,7 +478,10 @@ function AppContent() {
         // 退出 Scrub
         if (scrubLetterRef.current) {
           scrubLetterRef.current = null;
-          Animated.timing(scrubOpacity, { toValue: 0, duration: 100, useNativeDriver: true }).start(() => {
+          Animated.parallel([
+            Animated.timing(scrubOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+            Animated.timing(listOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+          ]).start(() => {
             setScrubItems([]);
             setScrubOffsets([]);
           });
@@ -597,7 +610,7 @@ function AppContent() {
               style={styles.settingsLink}
               onPress={() => setShowSettings(true)}
             >
-              <Text style={styles.settingsLinkText}>⚙ 设置</Text>
+              <Text style={styles.settingsLinkText}>⚙ {t('settings.title')}</Text>
             </TouchableOpacity>
           </View>
         );
@@ -645,7 +658,7 @@ function AppContent() {
     return (
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color={settings.themeColor} />
-        <Text style={styles.hintText}>正在加载应用...</Text>
+        <Text style={styles.hintText}>{t('common.loading')}</Text>
       </View>
     );
   }
@@ -708,16 +721,18 @@ function AppContent() {
 
       {/* Scrub 遮罩 */}
       {scrubItems.length > 0 && (
-        <Animated.View style={[styles.scrubOverlay, { opacity: scrubOpacity, backgroundColor: bgEnabled ? `rgba(6,6,12,${settings.listBgOpacity})` : '#06060c' }]} pointerEvents="none">
-          <FlatList
-            data={scrubItems}
-            keyExtractor={keyExtractor}
-            renderItem={renderItem}
-            getItemLayout={getScrubItemLayout}
-            scrollEnabled={false}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: height * settings.focusScrollRatio }}
-          />
+        <Animated.View style={[styles.scrubOverlay, { opacity: scrubOpacity }]} pointerEvents="none">
+          <View style={{ flex: 1 }}>
+            <FlatList
+              data={scrubItems}
+              keyExtractor={keyExtractor}
+              renderItem={renderItem}
+              getItemLayout={getScrubItemLayout}
+              scrollEnabled={false}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingTop: height * settings.focusScrollRatio }}
+            />
+          </View>
         </Animated.View>
       )}
 
@@ -730,6 +745,7 @@ function AppContent() {
           railHeight={settings.railHeight}
           pullX={pullXAnim}
           side={settings.railSide}
+          apps={cachedApps}
         />
       )}
 
@@ -743,6 +759,7 @@ function AppContent() {
         side={settings.railSide}
         pullX={pullXAnim}
         showList={true}
+        apps={cachedApps}
       />
 
       {settings.showRailBounds && (

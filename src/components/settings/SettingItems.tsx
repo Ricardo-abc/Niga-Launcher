@@ -63,27 +63,67 @@ interface SettingColorProps {
   colors: string[];
   value: string;
   onChange: (color: string) => void;
+  description?: string;
 }
 
-export const SettingColor: React.FC<SettingColorProps> = ({ label, colors, value, onChange }) => (
-  <SettingItem label={label}>
-    <View style={styles.colorRow}>
-      {colors.map((color) => (
-        <TouchableOpacity
-          key={color}
-          style={[
-            styles.colorItem,
-            { backgroundColor: color },
-            value === color && styles.colorItemActive,
-          ]}
-          onPress={() => onChange(color)}
-          activeOpacity={0.7}
-        >
-          {value === color && <Text style={styles.colorCheck}>✓</Text>}
-        </TouchableOpacity>
-      ))}
+export const SettingColor: React.FC<SettingColorProps> = ({ label, colors, value, onChange, description }) => (
+  <View>
+    <SettingItem label={label}>
+      <View style={styles.colorRow}>
+        {colors.map((color) => (
+          <TouchableOpacity
+            key={color}
+            style={[
+              styles.colorItem,
+              { backgroundColor: color },
+              value === color && styles.colorItemActive,
+            ]}
+            onPress={() => onChange(color)}
+            activeOpacity={0.7}
+          >
+            {value === color && <Text style={styles.colorCheck}>✓</Text>}
+          </TouchableOpacity>
+        ))}
+      </View>
+    </SettingItem>
+    {description && <Text style={styles.description}>{description}</Text>}
+  </View>
+);
+
+interface SettingToggleWithActionProps {
+  label: string;
+  value: boolean;
+  onToggle: (value: boolean) => void;
+  onAction: () => void;
+  actionIcon?: string;
+}
+
+export const SettingToggleWithAction: React.FC<SettingToggleWithActionProps> = ({
+  label,
+  value,
+  onToggle,
+  onAction,
+  actionIcon = '⚙️',
+}) => (
+  <View style={styles.item}>
+    <Text style={styles.label}>{label}</Text>
+    <View style={styles.toggleWithActionRow}>
+      <TouchableOpacity
+        style={styles.actionButton}
+        onPress={onAction}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.actionIcon}>{actionIcon}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.toggle, value && styles.toggleActive]}
+        onPress={() => onToggle(!value)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.toggleKnob, value && styles.toggleKnobActive]} />
+      </TouchableOpacity>
     </View>
-  </SettingItem>
+  </View>
 );
 
 interface SettingSliderItemProps {
@@ -210,8 +250,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  description: {
+    color: '#888',
+    fontSize: 12,
+    marginTop: -6,
+    paddingBottom: 10,
+    paddingLeft: 2,
+  },
   sliderItem: {
     paddingVertical: 10,
+  },
+  toggleWithActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  actionButton: {
+    padding: 8,
+  },
+  actionIcon: {
+    fontSize: 18,
   },
 });
 

@@ -2,7 +2,8 @@ import React from 'react';
 import { AppSettings } from '../../types/settings';
 import { THEME_COLORS, RAIL_COLORS, RAIL_ACTIVE_COLORS } from '../../constants/defaultSettings';
 import SettingModule from './SettingModule';
-import { SettingItem, SettingToggle, SettingSelector, SettingColor, SettingSliderItem } from './SettingItems';
+import { SettingItem, SettingToggle, SettingSelector, SettingColor, SettingSliderItem, SettingToggleWithAction } from './SettingItems';
+import { t } from '../../i18n';
 
 interface AppearanceModuleProps {
   settings: AppSettings;
@@ -11,18 +12,19 @@ interface AppearanceModuleProps {
 
 export const AppearanceModule: React.FC<AppearanceModuleProps> = ({ settings, onUpdate }) => (
   <SettingModule
-    title="外观"
+    title={t('settings.appearance.title')}
     icon="🎨"
     summary={settings.themeColor}
   >
     <SettingColor
-      label="主题颜色"
+      label={t('settings.appearance.themeColor')}
       colors={THEME_COLORS}
       value={settings.themeColor}
       onChange={(v) => onUpdate('themeColor', v)}
+      description={t('settings.appearance.themeColorDesc')}
     />
     <SettingSliderItem
-      label="字体缩放"
+      label={t('settings.appearance.fontScale')}
       value={settings.fontScale}
       min={0.8}
       max={1.4}
@@ -37,16 +39,17 @@ export const AppearanceModule: React.FC<AppearanceModuleProps> = ({ settings, on
 interface RailModuleProps {
   settings: AppSettings;
   onUpdate: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
+  onNavigateToVibration?: () => void;
 }
 
-export const RailModule: React.FC<RailModuleProps> = ({ settings, onUpdate }) => (
+export const RailModule: React.FC<RailModuleProps> = ({ settings, onUpdate, onNavigateToVibration }) => (
   <SettingModule
-    title="轨道"
+    title={t('settings.rail.title')}
     icon="📱"
-    summary={settings.railSide === 'left' ? '左侧' : '右侧'}
+    summary={settings.railSide === 'left' ? t('settings.rail.positionLeft') : t('settings.rail.positionRight')}
   >
     <SettingSliderItem
-      label="轨道高度"
+      label={t('settings.rail.height')}
       value={settings.railHeight}
       min={150}
       max={800}
@@ -56,7 +59,7 @@ export const RailModule: React.FC<RailModuleProps> = ({ settings, onUpdate }) =>
       onChange={(v) => onUpdate('railHeight', v)}
     />
     <SettingSliderItem
-      label="轨道长度"
+      label={t('settings.rail.length')}
       value={settings.railLength}
       min={0}
       max={800}
@@ -66,71 +69,83 @@ export const RailModule: React.FC<RailModuleProps> = ({ settings, onUpdate }) =>
       onChange={(v) => onUpdate('railLength', v)}
     />
     <SettingSelector
-      label="轨道位置"
+      label={t('settings.rail.position')}
       options={[
-        { label: '左侧', value: 'left' },
-        { label: '右侧', value: 'right' },
+        { label: t('settings.rail.positionLeft'), value: 'left' },
+        { label: t('settings.rail.positionRight'), value: 'right' },
       ]}
       value={settings.railSide}
       onChange={(v) => onUpdate('railSide', v as 'left' | 'right')}
     />
+    <SettingSelector
+      label={t('settings.rail.emptyLetter')}
+      options={[
+        { label: t('settings.rail.emptyLetterHide'), value: 'hide' },
+        { label: t('settings.rail.emptyLetterDim'), value: 'dim' },
+      ]}
+      value={settings.emptyLetterMode}
+      onChange={(v) => onUpdate('emptyLetterMode', v as 'hide' | 'dim')}
+    />
+
+    <SettingSelector
+      label={t('settings.rail.font')}
+      options={[
+        { label: t('settings.rail.fontSystem'), value: 'system' },
+        { label: t('settings.rail.fontMonospace'), value: 'monospace' },
+        { label: t('settings.rail.fontSerif'), value: 'serif' },
+        { label: t('settings.rail.fontSansSerif'), value: 'sans-serif' },
+      ]}
+      value={settings.railFontFamily || 'system'}
+      onChange={(v) => onUpdate('railFontFamily', v as any)}
+    />
+    <SettingSelector
+      label={t('settings.rail.fontWeight')}
+      options={[
+        { label: t('settings.rail.fontWeightNormal'), value: 'normal' },
+        { label: t('settings.rail.fontWeightMedium'), value: '500' },
+        { label: t('settings.rail.fontWeightBold'), value: 'bold' },
+      ]}
+      value={settings.railFontWeight || 'bold'}
+      onChange={(v) => onUpdate('railFontWeight', v as any)}
+    />
+    <SettingSliderItem
+      label={t('settings.rail.fontSize')}
+      value={settings.railFontSize !== undefined ? settings.railFontSize : 11}
+      min={8}
+      max={18}
+      step={0.5}
+      unit="px"
+      themeColor={settings.themeColor}
+      onChange={(v) => onUpdate('railFontSize', v)}
+    />
     <SettingColor
-      label="轨道字母颜色"
+      label={t('settings.rail.defaultColor')}
       colors={RAIL_COLORS}
       value={settings.railColor}
       onChange={(v) => onUpdate('railColor', v)}
+      description={t('settings.rail.defaultColorDesc')}
     />
     <SettingColor
-      label="滑动中字母颜色"
+      label={t('settings.rail.activeColor')}
       colors={RAIL_ACTIVE_COLORS}
       value={settings.railActiveColor}
       onChange={(v) => onUpdate('railActiveColor', v)}
+      description={t('settings.rail.activeColorDesc')}
     />
+
     <SettingToggle
-      label="选中字母变色"
+      label={t('settings.rail.colorChange')}
       value={settings.enableRailColorChange}
       onChange={(v) => onUpdate('enableRailColorChange', v)}
     />
-    <SettingToggle
-      label="轨道震动"
+    <SettingToggleWithAction
+      label={t('settings.rail.vibration')}
       value={settings.enableVibration}
-      onChange={(v) => onUpdate('enableVibration', v)}
+      onToggle={(v) => onUpdate('enableVibration', v)}
+      onAction={() => onNavigateToVibration?.()}
     />
-    {settings.enableVibration && (
-      <>
-        <SettingSelector
-          label="震动特效"
-          options={[
-            { label: '键盘点击', value: 'keyboardTap' },
-            { label: '选择滚动', value: 'selection' },
-            { label: '软触', value: 'soft' },
-            { label: '硬触', value: 'rigid' },
-            { label: '滴答', value: 'effectTick' },
-            { label: '段落感', value: 'segmentTick' },
-            { label: '轻撞击', value: 'impactLight' },
-            { label: '中撞击', value: 'impactMedium' },
-            { label: '重撞击', value: 'impactHeavy' },
-            { label: '手势开始', value: 'gestureStart' },
-            { label: '确认感', value: 'confirm' },
-            { label: '系统默认', value: 'system' },
-          ]}
-          value={settings.vibrationEffect}
-          onChange={(v) => onUpdate('vibrationEffect', v as AppSettings['vibrationEffect'])}
-        />
-        <SettingSliderItem
-          label="震动强度"
-          value={settings.vibrationIntensity}
-          min={1}
-          max={5}
-          step={1}
-          unit="级"
-          themeColor={settings.themeColor}
-          onChange={(v) => onUpdate('vibrationIntensity', v)}
-        />
-      </>
-    )}
     <SettingToggle
-      label="运动模糊"
+      label={t('settings.rail.motionBlur')}
       value={settings.enableMotionBlur}
       onChange={(v) => onUpdate('enableMotionBlur', v)}
     />
@@ -271,6 +286,19 @@ export const AppListModule: React.FC<AppListModuleProps> = ({ settings, onUpdate
       value={settings.enableScrubMode}
       onChange={(v) => onUpdate('enableScrubMode', v)}
     />
+    {settings.enableScrubMode && (
+      <SettingSliderItem
+        label="聚焦背景不透明度"
+        value={settings.scrubBgOpacity}
+        min={0}
+        max={1}
+        step={0.05}
+        unit=""
+        themeColor={settings.themeColor}
+        onChange={(v) => onUpdate('scrubBgOpacity', v)}
+        formatValue={(v) => `${Math.round(v * 100)}%`}
+      />
+    )}
   </SettingModule>
 );
 

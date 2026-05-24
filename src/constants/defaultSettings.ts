@@ -1,4 +1,4 @@
-﻿import { AppSettings } from '../types/settings';
+import { AppSettings } from '../types/settings';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   // 普通用户 - 无极调节
@@ -31,6 +31,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   vibrationIntensity: 5,        // 默认最大强度
   enableBottomRailSelect: true, // 默认开启 #下方点击选中#
   enableTopRailSelect: false,   // 默认关闭 *上方点击选中*
+  emptyLetterMode: 'hide',     // 默认隐藏无应用字母
+  railFontFamily: 'system',
+  railFontWeight: 'bold',
+  railFontSize: 11,
 
   // 收藏区域
   favoritesHeightMode: 'auto',
@@ -48,6 +52,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   overlayEffectIntensity: 40,
   wallpaperTimerInterval: 60,
   listBgOpacity: 0.6,
+  scrubBgOpacity: 1.0,
 
   // 开发者模式
   devMode: false,

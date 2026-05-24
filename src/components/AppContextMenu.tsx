@@ -14,6 +14,7 @@ import {
 import { AppInfo } from '../types/settings';
 import { useSettingsContext } from '../context/SettingsContext';
 import { EffectLayer } from '../effects';
+import { t } from '../i18n';
 
 const { height } = Dimensions.get('window');
 
@@ -128,7 +129,7 @@ const AppContextMenu: React.FC<AppContextMenuProps> = ({
           <TouchableOpacity style={styles.appInfo} onPress={handleEdit} activeOpacity={0.7}>
             <Text style={styles.appName} numberOfLines={1}>{app.name}</Text>
             <Text style={styles.packageName} numberOfLines={1}>{app.packageName}</Text>
-            <Text style={styles.editHint}>点击编辑</Text>
+            <Text style={styles.editHint}>{t('contextMenu.editHint')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -138,24 +139,24 @@ const AppContextMenu: React.FC<AppContextMenuProps> = ({
         <TouchableOpacity style={styles.menuItem} onPress={handleToggleFavorite} activeOpacity={0.6}>
           <Text style={styles.menuIcon}>{isFavorite ? '★' : '☆'}</Text>
           <Text style={styles.menuText}>
-            {isFavorite ? '取消收藏' : '收藏'}
+            {isFavorite ? t('contextMenu.unfavorite') : t('contextMenu.favorite')}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.menuItem} onPress={handleAppInfo} activeOpacity={0.6}>
           <Text style={styles.menuIcon}>ⓘ</Text>
-          <Text style={styles.menuText}>应用信息</Text>
+          <Text style={styles.menuText}>{t('contextMenu.appInfo')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.menuItem} onPress={handleEdit} activeOpacity={0.6}>
           <Text style={styles.menuIcon}>✎</Text>
-          <Text style={styles.menuText}>编辑名称 / 图标</Text>
+          <Text style={styles.menuText}>{t('contextMenu.editNameIcon')}</Text>
         </TouchableOpacity>
 
         {/* Cancel Button */}
         <View style={styles.divider} />
         <TouchableOpacity style={styles.cancelButton} onPress={onClose} activeOpacity={0.6}>
-          <Text style={styles.cancelText}>取消</Text>
+          <Text style={styles.cancelText}>{t('common.cancel')}</Text>
         </TouchableOpacity>
         </EffectLayer>
       </Animated.View>

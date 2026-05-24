@@ -1,4 +1,4 @@
-﻿import React, { useRef, useState, useCallback } from 'react';
+﻿import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -32,7 +32,19 @@ const WallpaperCarousel: React.FC<WallpaperCarouselProps> = ({
   onDelete,
 }) => {
   const scrollX = useRef(new Animated.Value(currentIndex)).current;
-  const [isDragging, setIsDragging] = useState(false);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const touchStartX = useRef(0);
+  const touchStartTime = useRef(0);
+
+  // Sync scrollX when currentIndex changes from parent
+  useEffect(() => {
+    Animated.spring(scrollX, {
+      toValue: currentIndex,
+      friction: 8,
+      tension: 60,
+      useNativeDriver: true,
+    }).start();
+  }, [currentIndex, scrollX]);
 
   const animateTo = useCallback(
     (index: number) => {
@@ -46,19 +58,52 @@ const WallpaperCarousel: React.FC<WallpaperCarouselProps> = ({
     [scrollX]
   );
 
-  const panResponder = useRef(
+  // Main image pan responder - handles swipe + long press
+  const imagePanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 15 && Math.abs(gs.dx) > Math.abs(gs.dy),
-      onPanResponderGrant: () => {
-        setIsDragging(true);
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10,
+      onPanResponderGrant: (_, gs) => {
+        touchStartX.current = gs.x0;
+        touchStartTime.current = Date.now();
+        // Start long press timer
+        longPressTimer.current = setTimeout(() => {
+          Vibration.vibrate(15);
+          // Will be handled by the closure - need to use ref
+        }, 500);
       },
       onPanResponderMove: (_, gs) => {
+        // Cancel long press on move
+        if (longPressTimer.current) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
         const offset = -gs.dx / PREVIEW_WIDTH;
         scrollX.setValue(currentIndex + offset);
       },
       onPanResponderRelease: (_, gs) => {
-        setIsDragging(false);
+        // Cancel long press timer
+        if (longPressTimer.current) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
+
+        const dt = Date.now() - touchStartTime.current;
+        const dx = Math.abs(gs.dx);
+        const dy = Math.abs(gs.dy);
+
+        // Long press detection (held for 500ms without much movement)
+        if (dt > 500 && dx < 10 && dy < 10) {
+          Vibration.vibrate(15);
+          Alert.alert('删除壁纸', '确定删除这张壁纸？', [
+            { text: '取消', style: 'cancel' },
+            { text: '删除', style: 'destructive', onPress: () => onDelete(currentIndex) },
+          ]);
+          animateTo(currentIndex);
+          return;
+        }
+
+        // Swipe detection
         const threshold = PREVIEW_WIDTH * 0.25;
         let newIndex = currentIndex;
         if (gs.dx < -threshold && currentIndex < wallpapers.length - 1) {
@@ -69,6 +114,54 @@ const WallpaperCarousel: React.FC<WallpaperCarouselProps> = ({
         animateTo(newIndex);
         if (newIndex !== currentIndex) {
           onSelect(newIndex);
+        }
+      },
+    })
+  ).current;
+
+  // Dots pan responder - handles swipe + tap on dots area
+  const dotsTouchStartX = useRef(0);
+  const dotsTouchStartTime = useRef(0);
+  const dotsStartIndex = useRef(0);
+
+  const dotsPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 5,
+      onPanResponderGrant: (_, gs) => {
+        dotsTouchStartX.current = gs.x0;
+        dotsTouchStartTime.current = Date.now();
+        dotsStartIndex.current = currentIndex;
+      },
+      onPanResponderMove: (_, gs) => {
+        // Calculate which dot the finger is closest to
+        const dotWidth = 24; // dot width + gap
+        const offset = Math.round(gs.dx / dotWidth);
+        const targetIndex = Math.max(0, Math.min(dotsStartIndex.current + offset, wallpapers.length - 1));
+        scrollX.setValue(targetIndex);
+      },
+      onPanResponderRelease: (_, gs) => {
+        const dt = Date.now() - dotsTouchStartTime.current;
+        const dx = Math.abs(gs.dx);
+
+        if (dt < 300 && dx < 10) {
+          // Tap detection - calculate which dot was tapped
+          const dotsAreaWidth = wallpapers.length * 24;
+          const dotsStartX = (SCREEN_WIDTH - dotsAreaWidth) / 2;
+          const relativeX = gs.x0 - dotsStartX;
+          const dotIndex = Math.floor(relativeX / 24);
+          const clampedIndex = Math.max(0, Math.min(dotIndex, wallpapers.length - 1));
+          animateTo(clampedIndex);
+          onSelect(clampedIndex);
+        } else {
+          // Swipe - snap to nearest
+          const dotWidth = 24;
+          const offset = Math.round(gs.dx / dotWidth);
+          const targetIndex = Math.max(0, Math.min(dotsStartIndex.current + offset, wallpapers.length - 1));
+          animateTo(targetIndex);
+          if (targetIndex !== dotsStartIndex.current) {
+            onSelect(targetIndex);
+          }
         }
       },
     })
@@ -86,29 +179,12 @@ const WallpaperCarousel: React.FC<WallpaperCarouselProps> = ({
     }
   }, [currentIndex, wallpapers.length, onReorder]);
 
-  const handleLongPress = useCallback(() => {
-    if (wallpapers.length <= 1) return;
-    Vibration.vibrate(15);
-    Alert.alert('删除壁纸', '确定删除这张壁纸？', [
-      { text: '取消', style: 'cancel' },
-      { text: '删除', style: 'destructive', onPress: () => onDelete(currentIndex) },
-    ]);
-  }, [wallpapers.length, currentIndex, onDelete]);
-
-  const handleDotPress = useCallback(
-    (index: number) => {
-      animateTo(index);
-      onSelect(index);
-    },
-    [animateTo, onSelect]
-  );
-
   if (wallpapers.length === 0) return null;
 
   return (
     <View style={styles.container}>
       {/* Large Preview */}
-      <View style={styles.previewContainer} {...panResponder.panHandlers}>
+      <View style={styles.previewContainer} {...imagePanResponder.panHandlers}>
         {wallpapers.map((uri, index) => {
           const translateX = scrollX.interpolate({
             inputRange: [index - 1, index, index + 1],
@@ -139,21 +215,14 @@ const WallpaperCarousel: React.FC<WallpaperCarouselProps> = ({
                 },
               ]}
             >
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onLongPress={handleLongPress}
-                delayLongPress={400}
-                style={styles.previewTouchable}
-              >
-                <Image source={{ uri }} style={styles.image} resizeMode="cover" />
-              </TouchableOpacity>
+              <Image source={{ uri }} style={styles.image} resizeMode="cover" />
             </Animated.View>
           );
         })}
       </View>
 
-      {/* Page Dots */}
-      <View style={styles.dotsContainer}>
+      {/* Page Dots - swipeable + clickable */}
+      <View style={styles.dotsContainer} {...dotsPanResponder.panHandlers}>
         {wallpapers.map((_, index) => {
           const dotScale = scrollX.interpolate({
             inputRange: [index - 1, index, index + 1],
@@ -167,17 +236,16 @@ const WallpaperCarousel: React.FC<WallpaperCarouselProps> = ({
           });
 
           return (
-            <TouchableOpacity key={index} onPress={() => handleDotPress(index)} activeOpacity={0.6}>
-              <Animated.View
-                style={[
-                  styles.dot,
-                  {
-                    transform: [{ scale: dotScale }],
-                    opacity: dotOpacity,
-                  },
-                ]}
-              />
-            </TouchableOpacity>
+            <Animated.View
+              key={index}
+              style={[
+                styles.dot,
+                {
+                  transform: [{ scale: dotScale }],
+                  opacity: dotOpacity,
+                },
+              ]}
+            />
           );
         })}
       </View>
@@ -225,10 +293,6 @@ const styles = StyleSheet.create({
   previewImage: {
     ...StyleSheet.absoluteFillObject,
   },
-  previewTouchable: {
-    width: '100%',
-    height: '100%',
-  },
   image: {
     width: '100%',
     height: '100%',
@@ -240,6 +304,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 12,
     gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
   dot: {
     width: 8,

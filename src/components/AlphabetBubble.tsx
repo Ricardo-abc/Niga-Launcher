@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Animated, Dimensions } from 'react-native';
 import { useSettingsContext } from '../context/SettingsContext';
-import { useActiveAlphabet } from '../hooks/useActiveAlphabet';
+import { useRailAlphabet } from '../hooks/useActiveAlphabet';
+import { AppInfo } from '../types/settings';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -11,6 +12,7 @@ interface AlphabetBubbleProps {
   railHeight: number;
   pullX: Animated.Value;
   side: 'left' | 'right';
+  apps: AppInfo[];
 }
 
 const LetterBubble: React.FC<{
@@ -41,10 +43,10 @@ const LetterBubble: React.FC<{
 });
 
 const AlphabetBubble: React.FC<AlphabetBubbleProps> = ({
-  activeIndexAnim, railTop, railHeight, pullX, side,
+  activeIndexAnim, railTop, railHeight, pullX, side, apps,
 }) => {
   const { settings } = useSettingsContext();
-  const alphabet = useActiveAlphabet();
+  const { alphabet } = useRailAlphabet(apps);
   const { bubbleSize, bubbleOffset, waveIntensity, themeColor, bubbleOpacity, shadowIntensity, railLength } = settings;
 
   const letterFontSize = 11;

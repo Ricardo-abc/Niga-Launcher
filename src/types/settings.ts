@@ -1,4 +1,4 @@
-﻿export interface AppSettings {
+export interface AppSettings {
   // 普通用户 - 无极调节
   railHeight: number;           // 范围: 150~800, 默认: 450
   railLength: number;           // 范围: 0~800, 默认: 480 轨道长度（字母分布范围）
@@ -25,10 +25,29 @@
   enableListColorChange: boolean;  // 默认: true 应用列表变色开关
   enableScrubMode: boolean;        // 默认: true 轨道滑动聚焦模式
   enableVibration: boolean;        // 默认: true 轨道震动开关
-  vibrationEffect: 'system' | 'keyboardTap' | 'selection' | 'soft' | 'rigid' | 'effectTick' | 'segmentTick' | 'impactLight' | 'impactMedium' | 'impactHeavy' | 'gestureStart' | 'confirm';  // 震动特效
+  vibrationEffect:
+    | 'system'
+    | 'keyboardTap' | 'selection' | 'soft' | 'rigid'
+    | 'effectTick' | 'segmentTick' | 'segmentFrequentTick'
+    | 'impactLight' | 'impactMedium' | 'impactHeavy'
+    | 'notificationSuccess' | 'notificationWarning' | 'notificationError'
+    | 'confirm' | 'reject'
+    | 'gestureStart' | 'gestureEnd'
+    | 'toggleOn' | 'toggleOff'
+    | 'dragStart'
+    | 'gestureThresholdActivate' | 'gestureThresholdDeactivate'
+    | 'clockTick' | 'contextClick'
+    | 'keyboardPress' | 'keyboardRelease'
+    | 'longPress' | 'textHandleMove'
+    | 'virtualKey' | 'virtualKeyRelease'
+    | 'effectClick' | 'effectDoubleClick' | 'effectHeavyClick';  // 震动特效
   vibrationIntensity: number;      // 范围: 1~5, 默认: 3 震动强度
   enableBottomRailSelect: boolean; // 默认: true #下方点击选中#（不跳转A）
   enableTopRailSelect: boolean;    // 默认: false *上方点击选中*（不跳转）
+  emptyLetterMode: 'hide' | 'dim'; // 默认: 'hide' 无应用字母处理模式
+  railFontFamily: 'system' | 'monospace' | 'serif' | 'sans-serif'; // 轨道字体
+  railFontWeight: 'normal' | '500' | 'bold';                       // 轨道字重
+  railFontSize: number;                                             // 轨道字体大小 (范围: 8~18, 默认: 11)
 
   // 收藏区域
   favoritesHeightMode: 'fixed' | 'auto';  // 默认: 'fixed' 收藏区域高度模式
@@ -46,6 +65,7 @@
   overlayEffectIntensity: number;    // 覆盖层效果强度
   wallpaperTimerInterval: number;   // 定时切换间隔（分钟）
   listBgOpacity: number;             // 列表背景透明度 (0~1)
+  scrubBgOpacity: number;            // 聚焦模式背景透明度 (0~1)
 
   // 开发者模式
   devMode: boolean;

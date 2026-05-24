@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { AppInfo, AppCustomization } from '../types/settings';
 import { useSettingsContext } from '../context/SettingsContext';
 import { EffectLayer } from '../effects';
+import { t } from '../i18n';
 
 const { height } = Dimensions.get('window');
 
@@ -159,7 +160,7 @@ const EditAppDialog: React.FC<EditAppDialogProps> = ({
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View>
             {/* Header */}
-            <Text style={styles.title}>编辑应用</Text>
+            <Text style={styles.title}>{t('editDialog.title')}</Text>
 
             {/* Icon Edit Area */}
             <TouchableOpacity
@@ -175,17 +176,17 @@ const EditAppDialog: React.FC<EditAppDialogProps> = ({
                 </View>
               )}
               <View style={styles.iconOverlay}>
-                <Text style={styles.iconOverlayText}>点击更换图标</Text>
+                <Text style={styles.iconOverlayText}>{t('editDialog.changeIcon')}</Text>
               </View>
             </TouchableOpacity>
 
             {/* Name Input */}
-            <Text style={styles.label}>应用名称</Text>
+            <Text style={styles.label}>{t('editDialog.appName')}</Text>
             <TextInput
               style={styles.input}
               value={name}
               onChangeText={setName}
-              placeholder="输入应用名称"
+              placeholder={t('editDialog.placeholder')}
               placeholderTextColor="#555"
               maxLength={30}
               selectTextOnFocus
@@ -194,7 +195,7 @@ const EditAppDialog: React.FC<EditAppDialogProps> = ({
             {/* Reset Hint */}
             {(hasCustomName || hasCustomIcon) && (
               <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
-                <Text style={styles.resetText}>恢复默认</Text>
+                <Text style={styles.resetText}>{t('common.reset')}</Text>
               </TouchableOpacity>
             )}
 
@@ -205,14 +206,14 @@ const EditAppDialog: React.FC<EditAppDialogProps> = ({
                 onPress={onClose}
                 activeOpacity={0.6}
               >
-                <Text style={styles.cancelButtonText}>取消</Text>
+                <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.button, styles.saveButton]}
                 onPress={handleSave}
                 activeOpacity={0.6}
               >
-                <Text style={styles.saveButtonText}>保存</Text>
+                <Text style={styles.saveButtonText}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>

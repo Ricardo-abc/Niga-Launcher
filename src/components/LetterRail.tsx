@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, View, Animated } from 'react-native';
-import { useActiveAlphabet } from '../hooks/useActiveAlphabet';
+import { useRailAlphabet } from '../hooks/useActiveAlphabet';
 import { useSettingsContext } from '../context/SettingsContext';
+import { AppInfo } from '../types/settings';
 
 interface LetterRailProps {
   activeIndex: number;
@@ -13,15 +14,22 @@ interface LetterRailProps {
   side: 'left' | 'right';
   pullX: Animated.Value;
   showList: boolean;
+  apps: AppInfo[];
 }
 
 const LetterRail: React.FC<LetterRailProps> = React.memo(({
-  activeIndex, activeIndexAnim, isSliding, colorSource, top, height, side, pullX, showList,
+  activeIndex, activeIndexAnim, isSliding, colorSource, top, height, side, pullX, showList, apps,
 }) => {
-  const alphabet = useActiveAlphabet();
+  const { alphabet, hasAppSet } = useRailAlphabet(apps);
   const { settings } = useSettingsContext();
   const directionMultiplier = side === 'right' ? -1 : 1;
-  const { waveIntensity, waveDecay, bubbleSize, bubbleOffset, railColor, railActiveColor, themeColor, enableRailColorChange, enableListColorChange, enableMotionBlur, motionBlurIntensity } = settings;
+  const { 
+    waveIntensity, waveDecay, bubbleSize, bubbleOffset, 
+    railColor, railActiveColor, themeColor, 
+    enableRailColorChange, enableListColorChange, 
+    enableMotionBlur, motionBlurIntensity,
+    railFontFamily, railFontWeight, railFontSize
+  } = settings;
 
   // 预计算波浪因子表：每个字母距离为 dist 时的因子值
   const waveFactorTable = useMemo(() => {
@@ -63,9 +71,11 @@ const LetterRail: React.FC<LetterRailProps> = React.memo(({
           const blurFactor = dist === 0 ? 0 : Math.exp(-dist * dist * 0.15) * motionBlurIntensity;
           const scaleFactor = dist === 0 ? 0 : Math.exp(-dist * dist * 0.1) * motionBlurIntensity * 0.15;
 
-          const motionBlurOpacity = enableMotionBlur && isSliding
+          const dimOpacity = settings.emptyLetterMode === 'dim' && !hasAppSet.has(letter) ? 0.15 : 1;
+
+          const motionBlurOpacity = (enableMotionBlur && isSliding
             ? 1 - blurFactor
-            : 1;
+            : 1) * dimOpacity;
 
           const motionBlurScale = enableMotionBlur && isSliding
             ? 1 - scaleFactor
@@ -90,7 +100,12 @@ const LetterRail: React.FC<LetterRailProps> = React.memo(({
               <Animated.Text
                 style={[
                   styles.letter,
-                  { color },
+                  { 
+                    color,
+                    fontFamily: railFontFamily === 'system' ? undefined : railFontFamily,
+                    fontWeight: railFontWeight,
+                    fontSize: railFontSize,
+                  },
                 ]}
               >
                 {letter}

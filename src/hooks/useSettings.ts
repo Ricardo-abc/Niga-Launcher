@@ -1,9 +1,10 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import { AppSettings, SettingKey } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../constants/defaultSettings';
 import { STORAGE_KEYS } from '../constants/storageKeys';
-import { setWallpaper, syncWallpaperMeta } from '../modules/WallpaperBridge';
+import { setWallpaper, syncWallpaperMeta, syncAllWallpapers } from '../modules/WallpaperBridge';
 
 function syncMeta(settings: AppSettings) {
   if (settings.enableBackgroundImage && settings.wallpapers.length > 0) {
@@ -12,6 +13,7 @@ function syncMeta(settings: AppSettings) {
       settings.currentWallpaperIndex,
       settings.wallpapers.length
     ).catch(() => {});
+    syncAllWallpapers(settings.wallpapers).catch(() => {});
   }
 }
 
@@ -35,6 +37,37 @@ export function useSettings() {
             delete parsed.backgroundImage;
           }
           const merged = { ...DEFAULT_SETTINGS, ...parsed };
+
+          // Migration: convert base64 wallpapers to local files
+          let hasMigration = false;
+          const migratedWallpapers = await Promise.all(
+            (merged.wallpapers || []).map(async (uri: string, index: number) => {
+              if (uri && (uri.startsWith('data:image') || uri.includes('base64'))) {
+                try {
+                  const dir = `${FileSystem.documentDirectory}wallpapers/`;
+                  await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+                  const filename = `migrated_wallpaper_${Date.now()}_${index}.jpg`;
+                  const destUri = `${dir}${filename}`;
+                  
+                  const base64Data = uri.split(',')[1] || uri;
+                  await FileSystem.writeAsStringAsync(destUri, base64Data, {
+                    encoding: FileSystem.EncodingType.Base64,
+                  });
+                  hasMigration = true;
+                  return destUri;
+                } catch (e) {
+                  console.error('[Settings] Migration failed for uri at index ' + index, e);
+                  return uri;
+                }
+              }
+              return uri;
+            })
+          );
+
+          if (hasMigration) {
+            merged.wallpapers = migratedWallpapers;
+            await AsyncStorage.setItem(STORAGE_KEYS.APP_SETTINGS, JSON.stringify(merged));
+          }
 
           if (merged.enableBackgroundImage && merged.wallpapers.length > 0) {
             if (merged.wallpaperMode === 'shuffle') {
@@ -137,6 +170,8 @@ export function useSettings() {
 
   // 重置所有设置
   const resetSettings = useCallback(() => {
+    const dir = `${FileSystem.documentDirectory}wallpapers/`;
+    FileSystem.deleteAsync(dir, { idempotent: true }).catch(() => {});
     setSettings(DEFAULT_SETTINGS);
     saveSettings(DEFAULT_SETTINGS);
   }, [saveSettings]);

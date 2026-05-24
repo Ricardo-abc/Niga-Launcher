@@ -1,16 +1,22 @@
-﻿import { NativeModules, Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 interface WallpaperBridgeType {
-  setWallpaper(base64: string): Promise<boolean>;
+  setWallpaper(uriOrBase64: string): Promise<boolean>;
+  syncAllWallpapers(uris: string[]): Promise<boolean>;
   syncWallpaperMeta(mode: string, index: number, count: number): Promise<boolean>;
   getSystemWallpaper(): Promise<string | null>;
 }
 
 const { WallpaperBridge } = NativeModules as { WallpaperBridge: WallpaperBridgeType | undefined };
 
-export async function setWallpaper(base64: string): Promise<boolean> {
+export async function setWallpaper(uriOrBase64: string): Promise<boolean> {
   if (Platform.OS !== 'android' || !WallpaperBridge) return false;
-  return WallpaperBridge.setWallpaper(base64);
+  return WallpaperBridge.setWallpaper(uriOrBase64);
+}
+
+export async function syncAllWallpapers(uris: string[]): Promise<boolean> {
+  if (Platform.OS !== 'android' || !WallpaperBridge) return false;
+  return WallpaperBridge.syncAllWallpapers(uris);
 }
 
 export async function syncWallpaperMeta(mode: string, index: number, count: number): Promise<boolean> {
