@@ -68,6 +68,8 @@ npm run android
 npm run apk
 ```
 
+After the build is complete, the APK file is located at `android/app/build/outputs/apk/release/`.
+
 ## Project Structure
 
 ```
