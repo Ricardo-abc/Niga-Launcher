@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { AppAnimated as Animated } from '../../services/AnimationService';
 
 interface SettingModuleProps {
   title: string;
@@ -72,10 +73,17 @@ const SettingModule: React.FC<SettingModuleProps> = ({
 
 const styles = StyleSheet.create({
   module: {
-    backgroundColor: '#1C1C1E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   moduleHeader: {
     flexDirection: 'row',
@@ -93,7 +101,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   moduleTitle: {
-    color: '#fff',
+    color: '#1C1C1E',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -114,7 +122,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 18,
     borderTopWidth: 0.5,
-    borderTopColor: '#38383A',
+    borderTopColor: '#E5E5EA',
   },
 });
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Image, LayoutChangeEvent } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, LayoutChangeEvent, Dimensions } from 'react-native';
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 import { loadFavorites, launchApplication } from '../services/AppService';
 import { useSettingsContext } from '../context/SettingsContext';
 import { AppInfo, AppCustomizations } from '../types/settings';
@@ -60,7 +61,7 @@ const FavoritesHeader: React.FC<FavoritesHeaderProps> = ({
 
   const favIconSize = settings.favIconSize;
   const numColumns = settings.favColumns;
-  const containerHeight = settings.favoritesHeightMode === 'fixed' ? settings.favoritesFixedHeight : undefined;
+
 
   // 将收藏应用按列分组
   const rows: AppInfo[][] = [];
@@ -111,7 +112,10 @@ const FavoritesHeader: React.FC<FavoritesHeaderProps> = ({
 
   return (
     <View
-      style={[styles.container, containerHeight ? { height: containerHeight } : undefined]}
+      style={[
+        styles.container,
+        { minHeight: SCREEN_HEIGHT }
+      ]}
       onLayout={handleLayout}
     >
       <View style={styles.topSection}>
@@ -177,7 +181,7 @@ const styles = StyleSheet.create({
   container: {
     paddingTop: 60,
     paddingBottom: 20,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
   },
   topSection: {
     marginBottom: 20,

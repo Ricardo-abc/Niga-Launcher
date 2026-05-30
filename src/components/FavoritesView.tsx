@@ -3,12 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity, FlatList, Image, Alert } from
 import { loadFavorites, removeFromFavorites, launchApplication } from '../services/AppService';
 import { useSettingsContext } from '../context/SettingsContext';
 
-interface FavoriteApp {
-  id: string;
-  name: string;
-  packageName: string;
-  icon: string;
-}
+import { AppInfo } from '../types/settings';
 
 interface FavoritesViewProps {
   onOpenSettings?: () => void;
@@ -17,7 +12,7 @@ interface FavoritesViewProps {
 
 const FavoritesView: React.FC<FavoritesViewProps> = () => {
   const { settings } = useSettingsContext();
-  const [favorites, setFavorites] = useState<FavoriteApp[]>([]);
+  const [favorites, setFavorites] = useState<AppInfo[]>([]);
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -35,7 +30,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = () => {
     weekday: 'long',
   });
 
-  const handleRemoveFavorite = (app: FavoriteApp) => {
+  const handleRemoveFavorite = (app: AppInfo) => {
     Alert.alert(
       '移除收藏',
       `确定要从收藏中移除 "${app.name}" 吗？`,
@@ -53,7 +48,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = () => {
     );
   };
 
-  const handleLaunchApp = (app: FavoriteApp) => {
+  const handleLaunchApp = (app: AppInfo) => {
     launchApplication(app.packageName);
   };
 
@@ -61,7 +56,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = () => {
   const numColumns = settings.favColumns;
   const itemWidth = `${100 / numColumns}%` as any;
 
-  const renderFavoriteItem = ({ item }: { item: FavoriteApp }) => (
+  const renderFavoriteItem = ({ item }: { item: AppInfo }) => (
     <TouchableOpacity
       style={[styles.favoriteItem, { width: itemWidth }]}
       onPress={() => handleLaunchApp(item)}

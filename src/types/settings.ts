@@ -15,9 +15,9 @@ export interface AppSettings {
   railSide: 'left' | 'right';  // 默认: 'right'
   themeColor: string;           // 默认: '#3b82f6'
   railColor: string;            // 默认: '#555' 轨道字母颜色
-  railActiveColor: string;      // 默认: '#aaa' 滑动中字母颜色
+
   displayMode: 'list' | 'grid'; // 默认: 'list'
-  showDivider: boolean;         // 默认: false 是否显示列表分割线
+  showDivider: boolean;         // 默认: false 是否显示应用列表分割线
   showHeaderDivider: boolean;   // 默认: true 是否显示字母分组分割线
   appNameFontSize: number;      // 范围: 12~20, 默认: 16 应用名称字体大小
   headerHeight: number;         // 范围: 24~64, 默认: 44 字母分组标题高度
@@ -47,7 +47,7 @@ export interface AppSettings {
   emptyLetterMode: 'hide' | 'dim'; // 默认: 'hide' 无应用字母处理模式
   railFontFamily: 'system' | 'monospace' | 'serif' | 'sans-serif'; // 轨道字体
   railFontWeight: 'normal' | '500' | 'bold';                       // 轨道字重
-  railFontSize: number;                                             // 轨道字体大小 (范围: 8~18, 默认: 11)
+  railFontSize: number;                                             // 轨道字体大小 (范围: 8~18, 默认: 13)
 
   // 收藏区域
   favoritesHeightMode: 'fixed' | 'auto';  // 默认: 'fixed' 收藏区域高度模式
@@ -63,19 +63,26 @@ export interface AppSettings {
   enableBackgroundImage: boolean;    // 是否启用壁纸背景
   overlayEffect: string;             // 覆盖层效果 key ('' 表示无)
   overlayEffectIntensity: number;    // 覆盖层效果强度
+  settingsBgEffect: string;          // 设置界面背景效果 key ('' 表示无)
+  settingsBgEffectIntensity: number; // 设置界面背景效果强度
   wallpaperTimerInterval: number;   // 定时切换间隔（分钟）
   listBgOpacity: number;             // 列表背景透明度 (0~1)
   scrubBgOpacity: number;            // 聚焦模式背景透明度 (0~1)
+  wallpaperDimming: number;          // 壁纸暗化程度 (0~0.8)
+  enableAutoDimming: boolean;        // 是否开启亮度自动适配
+  wallpaperDimmingTarget: 'always' | ('scrub' | 'appList')[]; // 暗化应用范围
+  wallpaperDimmingColor: string;     // 暗化遮罩颜色: 'black' | 'theme' | 'auto' | hex
+  currentWallpaperIsDark: boolean;   // 当前壁纸是否偏暗
+  currentWallpaperDominantColor: string; // 当前壁纸的主特征色
 
   // 开发者模式
   devMode: boolean;
   devClickCount: number;
-  waveIntensity: number;        // 范围: 0~2, 默认: 1.0
+  waveIntensity: number;        // 范围: 0~3, 默认: 1.0
   waveDecay: number;            // 范围: 0.001~0.5, 默认: 0.02 波浪衰减系数
-  waveShapeCap: number;         // 范围: 10~100, 默认: 45 波浪弯曲上限
+  waveShapeCap: number;         // 范围: 10~100, 默认: 100 波浪弯曲上限
   waveVerticalSpread: number;   // 范围: 0~2, 默认: 0.0 波浪纵向展开幅度
-  enableMotionBlur: boolean;    // 默认: true 运动模糊开关
-  motionBlurIntensity: number;  // 范围: 0~1, 默认: 0.6 运动模糊强度
+
   activeScale: number;          // 范围: 1.0~2.5, 默认: 1.8 选中字母缩放
   neighborScale: number;        // 范围: 1.0~1.5, 默认: 1.3 相邻字母缩放
   animationDuration: number;    // 范围: 50~500ms, 默认: 130

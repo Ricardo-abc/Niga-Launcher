@@ -16,8 +16,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // 普通用户 - 选择项
   railSide: 'right',
   themeColor: '#3b82f6',
-  railColor: '#555',
-  railActiveColor: '#aaa',
+  railColor: '#ffffff',
+
   displayMode: 'list',
   showDivider: false,      // 默认关闭分割线
   showHeaderDivider: true, // 默认显示字母分组分割线
@@ -34,7 +34,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   emptyLetterMode: 'hide',     // 默认隐藏无应用字母
   railFontFamily: 'system',
   railFontWeight: 'bold',
-  railFontSize: 11,
+  railFontSize: 13,
 
   // 收藏区域
   favoritesHeightMode: 'auto',
@@ -50,19 +50,26 @@ export const DEFAULT_SETTINGS: AppSettings = {
   enableBackgroundImage: false,
   overlayEffect: 'frosted-glass',
   overlayEffectIntensity: 40,
+  settingsBgEffect: 'frosted-glass',
+  settingsBgEffectIntensity: 80,
   wallpaperTimerInterval: 60,
   listBgOpacity: 0.6,
-  scrubBgOpacity: 1.0,
+  scrubBgOpacity: 0,
+  wallpaperDimming: 0.3,
+  enableAutoDimming: true,
+  wallpaperDimmingTarget: 'always',
+  wallpaperDimmingColor: 'black',
+  currentWallpaperIsDark: true,
+  currentWallpaperDominantColor: '#3b82f6',
 
   // 开发者模式
   devMode: false,
   devClickCount: 0,
   waveIntensity: 1.0,
   waveDecay: 0.02,
-  waveShapeCap: 45,
+  waveShapeCap: 100,
   waveVerticalSpread: 0.0,
-  enableMotionBlur: true,
-  motionBlurIntensity: 0.6,
+
   activeScale: 1.8,
   neighborScale: 1.3,
   animationDuration: 130,
@@ -78,6 +85,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export const THEME_COLORS = [
+  'auto',    // 自适应壁纸色彩
   '#3b82f6', // 蓝色
   '#ef4444', // 红色
   '#22c55e', // 绿色
@@ -89,26 +97,20 @@ export const THEME_COLORS = [
 ];
 
 export const RAIL_COLORS = [
-  '#555',   // 灰色
-  '#888',   // 浅灰
-  '#aaa',   // 更浅灰
-  '#666',   // 深灰
-  '#444',   // 暗灰
-  '#333',   // 深暗灰
-  '#777',   // 中灰
-  '#999',   // 银灰
+  '#ffffff', // 白色
+  '#888888', // 中灰
+  '#444444', // 深灰
+  '#ef4444', // 红色
+  '#f97316', // 橙色
+  '#eab308', // 黄色
+  '#22c55e', // 绿色
+  '#06b6d4', // 青色
+  '#3b82f6', // 蓝色
+  '#a855f7', // 紫色
+  '#ec4899', // 粉色
 ];
 
-export const RAIL_ACTIVE_COLORS = [
-  '#aaa',   // 浅灰
-  '#ccc',   // 银白
-  '#fff',   // 白色
-  '#888',   // 中灰
-  '#666',   // 深灰
-  '#ddd',   // 亮银
-  '#bbb',   // 银灰
-  '#eee',   // 近白
-];
+
 
 export const ALPHABET = '*ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
 

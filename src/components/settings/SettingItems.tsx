@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { AppAnimated as Animated } from '../../services/AnimationService';
 import SettingSlider from '../SettingSlider';
 
 interface SettingItemProps {
@@ -67,26 +68,38 @@ interface SettingColorProps {
 }
 
 export const SettingColor: React.FC<SettingColorProps> = ({ label, colors, value, onChange, description }) => (
-  <View>
-    <SettingItem label={label}>
-      <View style={styles.colorRow}>
-        {colors.map((color) => (
+  <View style={styles.colorSection}>
+    <Text style={styles.colorLabel}>{label}</Text>
+    <View style={styles.colorGrid}>
+      {colors.map((color) => {
+        const isAuto = color === 'auto';
+        const isLight = !isAuto && (color.toLowerCase() === '#ffffff' || color.toLowerCase() === '#fff' || color.toLowerCase() === '#eab308' || color.toLowerCase() === '#ccc' || color.toLowerCase() === '#eee');
+        const isSelected = value === color;
+        return (
           <TouchableOpacity
             key={color}
             style={[
               styles.colorItem,
-              { backgroundColor: color },
-              value === color && styles.colorItemActive,
+              { 
+                backgroundColor: isAuto ? '#F2F2F7' : color,
+                borderColor: isSelected 
+                  ? (isLight ? '#000' : (color === 'auto' ? '#3b82f6' : '#fff')) 
+                  : 'rgba(0, 0, 0, 0.15)'
+              },
             ]}
             onPress={() => onChange(color)}
             activeOpacity={0.7}
           >
-            {value === color && <Text style={styles.colorCheck}>✓</Text>}
+            {isAuto ? (
+              <Text style={{ color: isSelected ? '#3b82f6' : '#1C1C1E', fontSize: 10, fontWeight: 'bold' }}>Auto</Text>
+            ) : isSelected ? (
+              <Text style={[styles.colorCheck, isLight && { color: '#000' }]}>✓</Text>
+            ) : null}
           </TouchableOpacity>
-        ))}
-      </View>
-    </SettingItem>
-    {description && <Text style={styles.description}>{description}</Text>}
+        );
+      })}
+    </View>
+    {description && <Text style={styles.colorDescription}>{description}</Text>}
   </View>
 );
 
@@ -165,7 +178,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   label: {
-    color: '#fff',
+    color: '#1C1C1E',
     fontSize: 15,
     flex: 1,
     marginRight: 12,
@@ -174,7 +187,7 @@ const styles = StyleSheet.create({
     width: 51,
     height: 31,
     borderRadius: 16,
-    backgroundColor: '#39393D',
+    backgroundColor: '#E5E5EA',
     padding: 2,
     justifyContent: 'center',
   },
@@ -188,7 +201,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 2,
     elevation: 2,
   },
@@ -206,7 +219,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: '#2C2C2E',
+    backgroundColor: '#F2F2F7',
     borderWidth: 1,
     borderColor: 'transparent',
     minHeight: 38,
@@ -216,10 +229,10 @@ const styles = StyleSheet.create({
   },
   optionActive: {
     borderColor: '#3b82f6',
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
   },
   optionText: {
-    color: '#ccc',
+    color: '#555',
     fontSize: 12,
     fontWeight: '500',
   },
@@ -227,11 +240,22 @@ const styles = StyleSheet.create({
     color: '#3b82f6',
     fontWeight: '600',
   },
-  colorRow: {
+  colorSection: {
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E5E5EA',
+  },
+  colorLabel: {
+    color: '#1C1C1E',
+    fontSize: 15,
+    marginBottom: 12,
+    fontWeight: '500',
+  },
+  colorGrid: {
     flexDirection: 'row',
-    gap: 12,
     flexWrap: 'wrap',
-    justifyContent: 'flex-end',
+    gap: 12,
+    alignItems: 'center',
   },
   colorItem: {
     width: 40,
@@ -239,19 +263,21 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  colorItemActive: {
-    borderColor: '#fff',
+    borderWidth: 2.5,
   },
   colorCheck: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
+  colorDescription: {
+    color: '#8E8E93',
+    fontSize: 12,
+    marginTop: 8,
+    paddingLeft: 2,
+  },
   description: {
-    color: '#888',
+    color: '#8E8E93',
     fontSize: 12,
     marginTop: -6,
     paddingBottom: 10,
@@ -271,6 +297,123 @@ const styles = StyleSheet.create({
   actionIcon: {
     fontSize: 18,
   },
+  subModule: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F2F2F7',
+    width: '100%',
+  },
+  subHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    width: '100%',
+  },
+  subHeaderTitle: {
+    color: '#1C1C1E',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  expandArrow: {
+    color: '#8E8E93',
+    fontSize: 10,
+  },
+  subContent: {
+    paddingLeft: 4,
+    paddingBottom: 10,
+  },
 });
+
+interface SettingSubModuleProps {
+  title: string;
+  children: React.ReactNode;
+  defaultExpanded?: boolean;
+}
+
+export const SettingSubModule: React.FC<SettingSubModuleProps> = ({
+  title,
+  children,
+  defaultExpanded = false,
+}) => {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [animation] = useState(new Animated.Value(defaultExpanded ? 1 : 0));
+
+  const toggleExpand = () => {
+    const toValue = expanded ? 0 : 1;
+    Animated.spring(animation, {
+      toValue,
+      friction: 8,
+      tension: 60,
+      useNativeDriver: false,
+    }).start();
+    setExpanded(!expanded);
+  };
+
+  const rotateInterpolate = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  return (
+    <View style={styles.subModule}>
+      <TouchableOpacity
+        style={styles.subHeader}
+        onPress={toggleExpand}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.subHeaderTitle}>{title}</Text>
+        <Animated.Text
+          style={[
+            styles.expandArrow,
+            { transform: [{ rotate: rotateInterpolate }] },
+          ]}
+        >
+          ▼
+        </Animated.Text>
+      </TouchableOpacity>
+
+      {expanded && (
+        <View style={styles.subContent}>
+          {children}
+        </View>
+      )}
+    </View>
+  );
+};
+
+interface SettingMultiSelectorProps {
+  label: string;
+  options: { label: string; value: string }[];
+  value: string[];
+  onChange: (value: string[]) => void;
+}
+
+export const SettingMultiSelector: React.FC<SettingMultiSelectorProps> = ({ label, options, value, onChange }) => (
+  <SettingItem label={label}>
+    <View style={styles.selector}>
+      {options.map((option) => {
+        const isSelected = value.includes(option.value);
+        return (
+          <TouchableOpacity
+            key={option.value}
+            style={[styles.option, isSelected && styles.optionActive]}
+            onPress={() => {
+              if (isSelected) {
+                onChange(value.filter(v => v !== option.value));
+              } else {
+                onChange([...value, option.value]);
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  </SettingItem>
+);
 
 export default SettingItem;

@@ -47,7 +47,7 @@ const SettingSlider: React.FC<SettingSliderProps> = ({
         value={value}
         onValueChange={onChange}
         minimumTrackTintColor={themeColor}
-        maximumTrackTintColor="#39393D"
+        maximumTrackTintColor="#E5E5EA"
         thumbTintColor={themeColor}
       />
     </View>
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   label: {
-    color: '#fff',
+    color: '#1C1C1E',
     fontSize: 15,
     fontWeight: '400',
   },

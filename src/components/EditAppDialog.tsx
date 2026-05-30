@@ -6,15 +6,13 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
-  Animated,
   Dimensions,
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
+import { AppAnimated as Animated } from '../services/AnimationService';
 import * as ImagePicker from 'expo-image-picker';
 import { AppInfo, AppCustomization } from '../types/settings';
-import { useSettingsContext } from '../context/SettingsContext';
-import { EffectLayer } from '../effects';
 import { t } from '../i18n';
 
 const { height } = Dimensions.get('window');
@@ -34,7 +32,6 @@ const EditAppDialog: React.FC<EditAppDialogProps> = ({
   onClose,
   onSave,
 }) => {
-  const { settings } = useSettingsContext();
   const [name, setName] = useState('');
   const [iconUri, setIconUri] = useState('');
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -129,12 +126,11 @@ const EditAppDialog: React.FC<EditAppDialogProps> = ({
 
   const hasCustomName = existingCustomization?.customName;
   const hasCustomIcon = existingCustomization?.customIcon;
-  const bgEnabled = settings.enableBackgroundImage && settings.wallpapers.length > 0;
 
   return (
     <View style={styles.container}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <Animated.View style={[styles.overlay, { opacity: overlayAnim, backgroundColor: bgEnabled ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.7)' }]} />
+        <Animated.View style={[styles.overlay, { opacity: overlayAnim, backgroundColor: 'rgba(0,0,0,0.3)' }]} />
       </TouchableWithoutFeedback>
 
       <Animated.View
@@ -152,10 +148,8 @@ const EditAppDialog: React.FC<EditAppDialogProps> = ({
           },
         ]}
       >
-        <EffectLayer
-          effectKey={bgEnabled ? settings.overlayEffect : ''}
-          intensity={settings.overlayEffectIntensity}
-          style={[styles.dialogEffect, { backgroundColor: bgEnabled ? 'rgba(30,30,50,0.6)' : 'rgba(30,30,50,0.95)' }]}
+        <View
+          style={[styles.dialogEffect, { backgroundColor: '#FFFFFF' }]}
         >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View>
@@ -218,7 +212,7 @@ const EditAppDialog: React.FC<EditAppDialogProps> = ({
             </View>
           </View>
         </TouchableWithoutFeedback>
-        </EffectLayer>
+        </View>
       </Animated.View>
     </View>
   );
@@ -243,12 +237,17 @@ const styles = StyleSheet.create({
     width: '85%',
     borderRadius: 20,
     padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 16,
   },
   dialogEffect: {
     overflow: 'hidden',
   },
   title: {
-    color: '#fff',
+    color: '#1C1C1E',
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
@@ -289,19 +288,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   label: {
-    color: '#888',
+    color: '#8E8E93',
     fontSize: 13,
     marginBottom: 8,
     fontWeight: '500',
   },
   input: {
-    backgroundColor: '#12121e',
+    backgroundColor: '#F2F2F7',
     borderRadius: 12,
     padding: 14,
-    color: '#fff',
+    color: '#1C1C1E',
     fontSize: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#E5E5EA',
   },
   resetButton: {
     alignSelf: 'center',
@@ -325,10 +324,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#F2F2F7',
   },
   cancelButtonText: {
-    color: '#888',
+    color: '#555',
     fontSize: 16,
     fontWeight: '600',
   },

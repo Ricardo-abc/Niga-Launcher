@@ -14,6 +14,7 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.1",
     "@react-native-community/slider": "^5.2.0",
+    "@types/react": "~19.1.10",
     "expo": "~54.0.33",
     "expo-blur": "~15.0.8",
     "expo-file-system": "~19.0.22",
@@ -26,7 +27,8 @@
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-haptic-feedback": "^3.0.0",
-    "react-native-launcher-kit": "^2.1.0"
+    "react-native-launcher-kit": "^2.1.0",
+    "typescript": "~5.9.2"
   },
   "private": true
 }

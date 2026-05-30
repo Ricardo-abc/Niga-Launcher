@@ -3,6 +3,8 @@ import { StyleSheet, View, Animated, Dimensions, FlatList } from 'react-native';
 import { FlatItem } from '../services/AppService';
 import { GESTURE_STRIP_WIDTH, HEADER_HEIGHT } from '../constants/defaultSettings';
 
+import { useSettingsContext } from '../context/SettingsContext';
+
 const { height } = Dimensions.get('window');
 
 export interface ScrubOverlayRef {
@@ -22,6 +24,7 @@ const ScrubOverlay = React.memo(forwardRef<ScrubOverlayRef, ScrubOverlayProps>((
   scrubOpacity,
   appItemHeight,
 }, ref) => {
+  const { settings } = useSettingsContext();
   const [items, setItems] = useState<FlatItem[]>([]);
   const [offsets, setOffsets] = useState<number[]>([]);
 
@@ -42,8 +45,10 @@ const ScrubOverlay = React.memo(forwardRef<ScrubOverlayRef, ScrubOverlayProps>((
 
   if (items.length === 0) return null;
 
+  const scrubBgColor = `rgba(6, 6, 12, ${settings.scrubBgOpacity})`;
+
   return (
-    <Animated.View style={[styles.scrubOverlay, { opacity: scrubOpacity }]} pointerEvents="none">
+    <Animated.View style={[styles.scrubOverlay, { opacity: scrubOpacity, backgroundColor: scrubBgColor }]} pointerEvents="none">
       <View style={{ flex: 1 }}>
         <FlatList
           data={items}

@@ -4,6 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ALPHABET } from '../constants/defaultSettings';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { AppInfo, AppCustomization, AppCustomizations, FlatItem, FlatListResult } from '../types/settings';
+export { FlatItem };
+import * as FileSystem from 'expo-file-system/legacy';
+
+const ICON_DIR = `${FileSystem.documentDirectory}app_icons/`;
 
 /**
  * 根据名称计算首字母（支持中文拼音转换）
@@ -72,6 +76,63 @@ const saveCache = async (apps: AppInfo[]) => {
   }
 };
 
+export const cacheAppIcons = async (apps: AppInfo[]): Promise<AppInfo[]> => {
+  try {
+    await FileSystem.makeDirectoryAsync(ICON_DIR, { intermediates: true });
+    
+    const updatedApps = await Promise.all(
+      apps.map(async (app) => {
+        if (app.icon && (app.icon.startsWith('data:image') || app.icon.length > 500)) {
+          try {
+            const filename = `${app.packageName}.png`;
+            const destUri = `${ICON_DIR}${filename}`;
+            
+            // Extract pure base64 data
+            const base64Data = app.icon.includes(',') 
+              ? app.icon.substring(app.icon.indexOf(',') + 1) 
+              : app.icon;
+            
+            await FileSystem.writeAsStringAsync(destUri, base64Data, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            
+            return {
+              ...app,
+              icon: destUri,
+            };
+          } catch (err) {
+            console.warn(`[AppService] Failed to cache icon for ${app.packageName}:`, err);
+            return app;
+          }
+        }
+        return app;
+      })
+    );
+
+    // Asynchronously clean up old icons that are no longer installed
+    cleanUnusedIcons(updatedApps).catch(() => {});
+
+    return updatedApps;
+  } catch (e) {
+    console.error('[AppService] cacheAppIcons error:', e);
+    return apps;
+  }
+};
+
+const cleanUnusedIcons = async (activeApps: AppInfo[]) => {
+  try {
+    const dirInfo = await FileSystem.readDirectoryAsync(ICON_DIR);
+    const activePackages = new Set(activeApps.map(a => `${a.packageName}.png`));
+    for (const filename of dirInfo) {
+      if (!activePackages.has(filename)) {
+        await FileSystem.deleteAsync(`${ICON_DIR}${filename}`, { idempotent: true });
+      }
+    }
+  } catch (e) {
+    console.warn('[AppService] cleanUnusedIcons error:', e);
+  }
+};
+
 /**
  * 从原生 API 读取完整应用列表
  */
@@ -102,9 +163,12 @@ export const loadInstalledApps = async (): Promise<AppInfo[]> => {
     const formattedApps = installedApps.map(formatApp);
     formattedApps.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
 
-    saveCache(formattedApps);
+    // Cache the base64 icons to local files to dramatically reduce AsyncStorage size
+    const cachedApps = await cacheAppIcons(formattedApps);
 
-    return formattedApps;
+    saveCache(cachedApps);
+
+    return cachedApps;
   } catch (error) {
     console.error('[Native] Error:', error);
     return [];
@@ -137,15 +201,17 @@ export const buildFlatList = (apps: AppInfo[], favoritesHeight: number = 0, head
   const offsets: number[] = [];
   let currentOffset = favoritesHeight;
 
-  // 应用自定义名称，重新计算 letter
+  // 应用自定义名称，重新计算 letter (拼音解析剪枝优化：如果无更名则直接复用已保存的 letter，避免高开销)
   const displayApps = apps.map(app => {
     const custom = customizations[app.packageName];
-    const displayName = custom?.customName || app.name;
-    return {
-      ...app,
-      name: displayName,
-      letter: calculateLetter(displayName),
-    };
+    if (custom?.customName) {
+      return {
+        ...app,
+        name: custom.customName,
+        letter: calculateLetter(custom.customName),
+      };
+    }
+    return app;
   });
 
   // 按自定义名称排序
@@ -195,15 +261,17 @@ export const buildFilteredList = (apps: AppInfo[], letter: string, headerHeight:
   offsets.push(currentOffset);
   currentOffset += headerHeight;
 
-  // 应用自定义名称，重新计算 letter
+  // 应用自定义名称，重新计算 letter (拼音解析剪枝)
   const displayApps = apps.map(app => {
     const custom = customizations[app.packageName];
-    const displayName = custom?.customName || app.name;
-    return {
-      ...app,
-      name: displayName,
-      letter: calculateLetter(displayName),
-    };
+    if (custom?.customName) {
+      return {
+        ...app,
+        name: custom.customName,
+        letter: calculateLetter(custom.customName),
+      };
+    }
+    return app;
   });
 
   // 按自定义名称排序
@@ -236,6 +304,21 @@ export const launchApplication = (packageName: string) => {
     RNLauncherKitHelper.launchApplication(packageName);
   } catch (error) {
     console.error('[Launch] Error:', packageName, error);
+  }
+};
+
+export const openAppDetails = (packageName: string) => {
+  try {
+    const { NativeModules, Platform } = require('react-native');
+    if (Platform.OS === 'android') {
+      if (NativeModules.LauncherKit && typeof NativeModules.LauncherKit.openAppDetails === 'function') {
+        NativeModules.LauncherKit.openAppDetails(packageName);
+      } else {
+        console.warn('[AppService] NativeModules.LauncherKit.openAppDetails is not available');
+      }
+    }
+  } catch (error) {
+    console.error('[AppService] openAppDetails error:', error);
   }
 };
 

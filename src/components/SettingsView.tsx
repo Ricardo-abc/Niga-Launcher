@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-native';
+import { AppAnimated as Animated } from '../services/AnimationService';
 import { useSettingsContext } from '../context/SettingsContext';
 import { DevModeTrigger, GeneralSettings, DevSettings, VibrationSettings } from './settings';
-import { EffectLayer } from '../effects';
+
 import { t } from '../i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -17,8 +18,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
   const [showVibrationSettings, setShowVibrationSettings] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
-  const bgEnabled = settings.enableBackgroundImage && settings.wallpapers.length > 0;
-  const containerBg = bgEnabled ? 'transparent' : 'rgba(0,0,0,0.92)';
+  const containerBg = '#F2F2F7';
+  const headerBg = '#FFFFFF';
+  const tabBarBg = '#FFFFFF';
+  const themeColor = settings.themeColor === 'auto' ? (settings.currentWallpaperDominantColor || '#3b82f6') : settings.themeColor;
 
   const switchTab = (tab: 'general' | 'dev') => {
     setActiveTab(tab);
@@ -37,30 +40,21 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
 
   if (showVibrationSettings) {
     return (
-      <EffectLayer
-        effectKey={bgEnabled ? settings.overlayEffect : ''}
-        intensity={settings.overlayEffectIntensity}
-        style={styles.effectLayer}
-      >
+      <View style={styles.container}>
         <VibrationSettings
           settings={settings}
           onUpdate={updateSetting}
           onConfirm={() => setShowVibrationSettings(false)}
           onBack={() => setShowVibrationSettings(false)}
         />
-      </EffectLayer>
+      </View>
     );
   }
 
   return (
-    <EffectLayer
-      effectKey={bgEnabled ? settings.overlayEffect : ''}
-      intensity={settings.overlayEffectIntensity}
-      style={styles.effectLayer}
-    >
-      <View style={[styles.container, { backgroundColor: containerBg }]}>
+    <View style={[styles.container, { backgroundColor: containerBg }]}>
       {/* 顶部导航栏 */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: headerBg }]}>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
           <Text style={styles.closeIcon}>✕</Text>
         </TouchableOpacity>
@@ -76,7 +70,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
 
       {/* Tab栏 - 仅在开发者模式启用时显示 */}
       {settings.devMode && (
-        <View style={styles.tabBar}>
+        <View style={[styles.tabBar, { backgroundColor: tabBarBg }]}>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'general' && styles.tabActive]}
             onPress={() => switchTab('general')}
@@ -85,7 +79,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
             <Text style={[styles.tabText, activeTab === 'general' && styles.tabTextActive]}>
               {t('settings.general')}
             </Text>
-            {activeTab === 'general' && <View style={styles.tabIndicator} />}
+            {activeTab === 'general' && <View style={[styles.tabIndicator, { backgroundColor: themeColor }]} />}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -96,7 +90,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
             <Text style={[styles.tabText, activeTab === 'dev' && styles.tabTextActive]}>
               {t('settings.developer')}
             </Text>
-            {activeTab === 'dev' && <View style={styles.tabIndicator} />}
+            {activeTab === 'dev' && <View style={[styles.tabIndicator, { backgroundColor: themeColor }]} />}
           </TouchableOpacity>
         </View>
       )}
@@ -127,17 +121,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
         )}
       </View>
       </View>
-    </EffectLayer>
   );
 };
 
 const styles = StyleSheet.create({
-  effectLayer: {
+  container: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 100,
-  },
-  container: {
-    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -146,7 +136,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 16,
     paddingBottom: 8,
-    backgroundColor: '#000',
+    backgroundColor: 'transparent',
   },
   headerRight: {
     width: 32,
@@ -155,21 +145,21 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#2C2C2E',
+    backgroundColor: '#F2F2F7',
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeIcon: {
-    color: '#fff',
+    color: '#1C1C1E',
     fontSize: 14,
     fontWeight: '600',
   },
   tabBar: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    backgroundColor: '#000',
+    backgroundColor: 'transparent',
     borderBottomWidth: 0.5,
-    borderBottomColor: '#38383A',
+    borderBottomColor: '#E5E5EA',
   },
   tab: {
     flex: 1,
@@ -186,7 +176,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   tabTextActive: {
-    color: '#fff',
+    color: '#1C1C1E',
     fontWeight: '600',
   },
   tabIndicator: {
@@ -195,7 +185,6 @@ const styles = StyleSheet.create({
     left: '25%',
     right: '25%',
     height: 2,
-    backgroundColor: '#fff',
     borderRadius: 1,
   },
   contentContainer: {

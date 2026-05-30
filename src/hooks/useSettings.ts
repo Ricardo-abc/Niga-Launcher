@@ -1,17 +1,40 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { Platform, AppState } from 'react-native';
 import { AppSettings, SettingKey } from '../types/settings';
 import { DEFAULT_SETTINGS } from '../constants/defaultSettings';
 import { STORAGE_KEYS } from '../constants/storageKeys';
-import { setWallpaper, syncWallpaperMeta, syncAllWallpapers } from '../modules/WallpaperBridge';
+import { setWallpaper, syncWallpaperMeta, syncAllWallpapers, getWallpaperColors, getSystemWallpaper } from '../modules/WallpaperBridge';
+import { setGlobalDisableAnimation } from '../services/AnimationService';
+
+export function resolveDimmingColor(settings: AppSettings): string {
+  const color = settings.wallpaperDimmingColor || 'black';
+  if (color === 'black') return '#000000';
+  if (color === 'theme') {
+    return settings.themeColor === 'auto'
+      ? (settings.currentWallpaperDominantColor || '#3b82f6')
+      : settings.themeColor;
+  }
+  if (color === 'auto') {
+    return settings.currentWallpaperDominantColor || '#3b82f6';
+  }
+  return color;
+}
 
 function syncMeta(settings: AppSettings) {
   if (settings.enableBackgroundImage && settings.wallpapers.length > 0) {
+    const baseDimming = settings.enableAutoDimming
+      ? (settings.currentWallpaperIsDark ? 0.2 : 0.55)
+      : settings.wallpaperDimming;
+    const resolvedDimming = settings.wallpaperDimmingTarget === 'always' ? baseDimming : 0;
+    const resolvedColor = resolveDimmingColor(settings);
     syncWallpaperMeta(
       settings.wallpaperMode,
       settings.currentWallpaperIndex,
-      settings.wallpapers.length
+      settings.wallpapers.length,
+      resolvedDimming,
+      resolvedColor
     ).catch(() => {});
     syncAllWallpapers(settings.wallpapers).catch(() => {});
   }
@@ -78,6 +101,7 @@ export function useSettings() {
           }
 
           setSettings(merged);
+          setGlobalDisableAnimation(merged.disableAnimation);
 
           if (merged.enableBackgroundImage && merged.wallpapers.length > 0) {
             const idx = Math.min(merged.currentWallpaperIndex, merged.wallpapers.length - 1);
@@ -146,22 +170,71 @@ export function useSettings() {
     }, 300);
   }, []);
 
+  const updateColorsForWallpaper = useCallback(async (uris: string[], index: number) => {
+    const idx = Math.min(index, uris.length - 1);
+    const uri = uris[idx];
+    if (uri && Platform.OS === 'android') {
+      try {
+        const colors = await getWallpaperColors(uri);
+        if (colors) {
+          return {
+            currentWallpaperIsDark: colors.isDark,
+            currentWallpaperDominantColor: colors.dominantColor,
+          };
+        }
+      } catch (e) {
+        console.warn('[Settings] Failed to extract colors:', e);
+      }
+    }
+    return null;
+  }, []);
+
   // 更新单个设置项
   const updateSetting = useCallback(<K extends SettingKey>(key: K, value: AppSettings[K]) => {
     setSettings(prev => {
       const newSettings = { ...prev, [key]: value };
+      
+      if (key === 'disableAnimation') {
+        setGlobalDisableAnimation(value as boolean);
+      }
+
+      if (key === 'currentWallpaperIndex' || key === 'wallpapers') {
+        const idx = key === 'currentWallpaperIndex' ? (value as number) : newSettings.currentWallpaperIndex;
+        const uris = key === 'wallpapers' ? (value as string[]) : newSettings.wallpapers;
+        
+        updateColorsForWallpaper(uris, idx).then(colors => {
+          if (colors) {
+            setSettings(prevColors => {
+              const updated = { ...prevColors, ...colors };
+              saveSettings(updated);
+              syncMeta(updated);
+              return updated;
+            });
+          }
+        });
+      }
+
       saveSettings(newSettings);
-      if (key === 'wallpaperMode' || key === 'currentWallpaperIndex' || key === 'wallpapers') {
+      if (
+        key === 'wallpaperMode' ||
+        key === 'currentWallpaperIndex' ||
+        key === 'wallpapers' ||
+        key === 'wallpaperDimming' ||
+        key === 'enableAutoDimming'
+      ) {
         syncMeta(newSettings);
       }
       return newSettings;
     });
-  }, [saveSettings]);
+  }, [saveSettings, updateColorsForWallpaper]);
 
   // 批量更新设置
   const updateSettings = useCallback((partial: Partial<AppSettings>) => {
     setSettings(prev => {
       const newSettings = { ...prev, ...partial };
+      if (partial.disableAnimation !== undefined) {
+        setGlobalDisableAnimation(partial.disableAnimation);
+      }
       saveSettings(newSettings);
       syncMeta(newSettings);
       return newSettings;
@@ -173,6 +246,7 @@ export function useSettings() {
     const dir = `${FileSystem.documentDirectory}wallpapers/`;
     FileSystem.deleteAsync(dir, { idempotent: true }).catch(() => {});
     setSettings(DEFAULT_SETTINGS);
+    setGlobalDisableAnimation(DEFAULT_SETTINGS.disableAnimation);
     saveSettings(DEFAULT_SETTINGS);
   }, [saveSettings]);
 
@@ -193,6 +267,48 @@ export function useSettings() {
   const toggleDevMode = useCallback(() => {
     updateSetting('devMode', !settings.devMode);
   }, [settings.devMode, updateSetting]);
+
+  const updateSystemWallpaperColors = useCallback(async () => {
+    try {
+      const systemWallpaperUri = await getSystemWallpaper();
+      if (systemWallpaperUri && Platform.OS === 'android') {
+        const colors = await getWallpaperColors(systemWallpaperUri);
+        if (colors) {
+          setSettings(prev => {
+            if (prev.wallpapers.length > 0) return prev;
+            const updated = {
+              ...prev,
+              currentWallpaperIsDark: colors.isDark,
+              currentWallpaperDominantColor: colors.dominantColor,
+            };
+            saveSettings(updated);
+            return updated;
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[Settings] Failed to fetch system wallpaper colors:', e);
+    }
+  }, [saveSettings]);
+
+  // AppState listener to refresh system wallpaper colors when using default system wallpaper
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && settings.wallpapers.length === 0) {
+        updateSystemWallpaperColors().catch(() => {});
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [settings.wallpapers.length, updateSystemWallpaperColors]);
+
+  // Initial fetch on load
+  useEffect(() => {
+    if (isLoaded && settings.wallpapers.length === 0) {
+      updateSystemWallpaperColors().catch(() => {});
+    }
+  }, [isLoaded, settings.wallpapers.length, updateSystemWallpaperColors]);
 
   return {
     settings,

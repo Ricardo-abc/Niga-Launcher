@@ -5,7 +5,6 @@ import {
   View,
   TouchableOpacity,
   Image,
-  Animated,
   Dimensions,
   TouchableWithoutFeedback,
   Linking,
@@ -13,11 +12,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { AppAnimated as Animated } from '../services/AnimationService';
 import * as ImagePicker from 'expo-image-picker';
 import { AppInfo, AppCustomization, AppCustomizations } from '../types/settings';
 import { useSettingsContext } from '../context/SettingsContext';
-import { EffectLayer } from '../effects';
 import { t } from '../i18n';
+import { openAppDetails } from '../services/AppService';
 
 const { height } = Dimensions.get('window');
 
@@ -116,11 +116,10 @@ const AppContextMenu: React.FC<AppContextMenuProps> = ({
     }
     onClose();
     setTimeout(() => {
-      try {
-        const uri = `package:${app.packageName}`;
-        Linking.openURL(`android.settings.APPLICATION_DETAILS_SETTINGS#${uri}`);
-      } catch (e) {
-        console.error('[AppInfo] Failed to open:', e);
+      if (Platform.OS === 'android') {
+        openAppDetails(app.packageName);
+      } else {
+        Linking.openSettings();
       }
     }, 200);
   };
@@ -216,8 +215,6 @@ const AppContextMenu: React.FC<AppContextMenuProps> = ({
     // 失焦时只保存，不关闭菜单
   };
 
-  const bgEnabled = settings.enableBackgroundImage && settings.wallpapers.length > 0;
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -225,16 +222,14 @@ const AppContextMenu: React.FC<AppContextMenuProps> = ({
       keyboardVerticalOffset={0}
     >
       <TouchableWithoutFeedback onPress={handleClose}>
-        <Animated.View style={[styles.overlay, { opacity: overlayAnim, backgroundColor: bgEnabled ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.6)' }]} />
+        <Animated.View style={[styles.overlay, { opacity: overlayAnim, backgroundColor: 'rgba(0,0,0,0.3)' }]} />
       </TouchableWithoutFeedback>
 
       <Animated.View
         style={[styles.sheet, { transform: [{ translateY: sheetAnim }] }]}
       >
-        <EffectLayer
-          effectKey={bgEnabled ? settings.overlayEffect : ''}
-          intensity={settings.overlayEffectIntensity}
-          style={[styles.sheetEffect, { backgroundColor: bgEnabled ? 'rgba(26,26,46,0.6)' : 'rgba(26,26,46,0.95)' }]}
+        <View
+          style={[styles.sheetEffect, { backgroundColor: '#FFFFFF' }]}
         >
         {/* App Preview - 点击图标直接选择图片，点击名称直接编辑 */}
         <View style={styles.appPreview}>
@@ -298,7 +293,7 @@ const AppContextMenu: React.FC<AppContextMenuProps> = ({
         <TouchableOpacity style={styles.cancelButton} onPress={onClose} activeOpacity={0.6}>
           <Text style={styles.cancelText}>{t('common.cancel')}</Text>
         </TouchableOpacity>
-        </EffectLayer>
+        </View>
       </Animated.View>
     </KeyboardAvoidingView>
   );
@@ -326,6 +321,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingBottom: 34,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 16,
   },
   sheetEffect: {
     overflow: 'hidden',
@@ -371,26 +371,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   appName: {
-    color: '#fff',
+    color: '#1C1C1E',
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 4,
   },
   nameInput: {
-    color: '#fff',
+    color: '#1C1C1E',
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 4,
     paddingVertical: 10,
     paddingHorizontal: 12,
     minHeight: 44,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#F2F2F7',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#3b82f6',
   },
   packageName: {
-    color: '#666',
+    color: '#8E8E93',
     fontSize: 13,
   },
   editHint: {
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#E5E5EA',
     marginHorizontal: 16,
   },
   menuItem: {
@@ -411,12 +411,12 @@ const styles = StyleSheet.create({
   },
   menuIcon: {
     fontSize: 20,
-    color: '#ccc',
+    color: '#8E8E93',
     width: 32,
     textAlign: 'center',
   },
   menuText: {
-    color: '#e0e0e0',
+    color: '#1C1C1E',
     fontSize: 16,
     fontWeight: '500',
   },
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelText: {
-    color: '#888',
+    color: '#555',
     fontSize: 16,
     fontWeight: '500',
   },

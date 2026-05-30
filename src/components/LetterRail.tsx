@@ -21,6 +21,138 @@ interface LetterRailProps {
   apps: AppInfo[];
 }
 
+const LetterBubble: React.FC<{
+  letter: string;
+  index: number;
+  isLast: boolean;
+  activeIndexAnim: Animated.Value;
+}> = React.memo(({ letter, index, isLast, activeIndexAnim }) => {
+  const opacity = React.useMemo(() =>
+    activeIndexAnim.interpolate({
+      inputRange: [index - 0.5, index, index + 0.5],
+      outputRange: [0, 1, 0],
+      extrapolate: 'clamp',
+    }),
+    [activeIndexAnim, index]
+  );
+
+  return (
+    <Animated.Text
+      style={[
+        styles.bubbleText,
+        { opacity, position: isLast ? 'relative' : 'absolute' },
+      ]}
+    >
+      {letter}
+    </Animated.Text>
+  );
+});
+
+interface AlphabetBubbleProps {
+  activeIndexAnim: Animated.Value;
+  railHeight: number;
+  pullX: Animated.Value;
+  side: 'left' | 'right';
+  alphabet: string[];
+}
+
+const AlphabetBubble: React.FC<AlphabetBubbleProps> = React.memo(({
+  activeIndexAnim, railHeight, pullX, side, alphabet
+}) => {
+  const { settings } = useSettingsContext();
+  const { bubbleSize, bubbleOffset, waveIntensity, bubbleOpacity, shadowIntensity } = settings;
+  const themeColor = settings.themeColor === 'auto' ? (settings.currentWallpaperDominantColor || '#3b82f6') : settings.themeColor;
+
+  const letterFontSize = 11;
+  const lineHeightMultiplier = 1.2;
+  const letterHeight = letterFontSize * lineHeightMultiplier;
+  const totalLetterHeight = alphabet.length * letterHeight;
+  const gap = (railHeight - totalLetterHeight) / (alphabet.length - 1);
+
+  // 用 translateY 代替 top 布局属性，使动画完全运行在 Native GPU 驱动上，防止卡顿和不跟随问题
+  const bubbleY = React.useMemo(() => {
+    return activeIndexAnim.interpolate({
+      inputRange: Array.from({ length: alphabet.length }, (_, i) => i),
+      outputRange: Array.from({ length: alphabet.length }, (_, i) => {
+        const letterCenter = letterHeight / 2 + i * (letterHeight + gap);
+        return letterCenter - bubbleSize / 2;
+      }),
+      extrapolate: 'clamp',
+    });
+  }, [activeIndexAnim, alphabet.length, letterHeight, gap, bubbleSize]);
+
+  const cappedPull = React.useMemo(() => {
+    return pullX.interpolate({
+      inputRange: [0, settings.waveShapeCap],
+      outputRange: [0, settings.waveShapeCap],
+      extrapolate: 'clamp',
+    });
+  }, [pullX, settings.waveShapeCap]);
+
+  const wholeShift = React.useMemo(() => {
+    return pullX.interpolate({
+      inputRange: [0, settings.waveShapeCap, settings.waveShapeCap + 1000],
+      outputRange: [0, 0, 1000],
+      extrapolate: 'clamp',
+    });
+  }, [pullX, settings.waveShapeCap]);
+
+  const waveFactor = 1.3 * waveIntensity;
+  const directionMultiplier = side === 'left' ? 1 : -1;
+
+  const bubbleX = React.useMemo(() => {
+    if (settings.disableAnimation) {
+      return new Animated.Value(0);
+    }
+    const bubbleShift = Animated.add(
+      Animated.multiply(cappedPull, waveFactor),
+      wholeShift
+    );
+    return Animated.multiply(bubbleShift, directionMultiplier);
+  }, [cappedPull, waveFactor, wholeShift, directionMultiplier, settings.disableAnimation]);
+
+  const bubbleStyle = React.useMemo(() => ({
+    width: bubbleSize,
+    height: bubbleSize,
+    borderRadius: bubbleSize / 2,
+    backgroundColor: themeColor,
+    opacity: bubbleOpacity,
+    shadowColor: themeColor,
+    shadowOpacity: shadowIntensity,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 12,
+  }), [bubbleSize, themeColor, bubbleOpacity, shadowIntensity]);
+
+  const transforms = [
+    { translateX: bubbleX },
+    { translateY: bubbleY }
+  ] as any;
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.bubble,
+        bubbleStyle,
+        { top: 0 },
+        side === 'left' ? { left: -bubbleSize } : { right: bubbleOffset },
+        { transform: transforms },
+      ]}
+    >
+      {alphabet.map((letter, index) => (
+        <LetterBubble
+          key={letter}
+          letter={letter}
+          index={index}
+          isLast={index === 0}
+          activeIndexAnim={activeIndexAnim}
+        />
+      ))}
+    </Animated.View>
+  );
+});
+
 const LetterRail = React.memo(React.forwardRef<LetterRailRef, LetterRailProps>(({
   activeIndexAnim, isSliding, isDragging, top, height, side, pullX, showList, apps,
 }, ref) => {
@@ -29,11 +161,11 @@ const LetterRail = React.memo(React.forwardRef<LetterRailRef, LetterRailProps>((
   const directionMultiplier = side === 'right' ? -1 : 1;
   const { 
     waveIntensity, waveDecay, waveShapeCap, waveVerticalSpread, bubbleSize, bubbleOffset, 
-    railColor, railActiveColor, themeColor, 
+    railColor, 
     enableRailColorChange, enableListColorChange, 
-    enableMotionBlur, motionBlurIntensity,
     railFontFamily, railFontWeight, railFontSize
   } = settings;
+  const themeColor = settings.themeColor === 'auto' ? (settings.currentWallpaperDominantColor || '#3b82f6') : settings.themeColor;
 
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [colorSource, setColorSource] = React.useState<'rail' | 'list'>('list');
@@ -102,30 +234,6 @@ const LetterRail = React.memo(React.forwardRef<LetterRailRef, LetterRailProps>((
     });
   }, [pullX, waveShapeCap]);
 
-  // 预解析颜色，避免在渲染循环中重复进行 Hex 字符串拆解计算
-  const parsedColors = useMemo(() => {
-    const parseHex = (hex: string) => {
-      let cleaned = hex.replace('#', '');
-      if (cleaned.length === 3) {
-        cleaned = cleaned.split('').map(c => c + c).join('');
-      }
-      const num = parseInt(cleaned, 16);
-      return {
-        r: (num >> 16) & 255,
-        g: (num >> 8) & 255,
-        b: num & 255,
-      };
-    };
-    try {
-      return {
-        c1: parseHex(railColor),
-        c2: parseHex(railActiveColor),
-      };
-    } catch (e) {
-      return null;
-    }
-  }, [railColor, railActiveColor]);
-
   return (
     <View
       pointerEvents="none"
@@ -149,34 +257,11 @@ const LetterRail = React.memo(React.forwardRef<LetterRailRef, LetterRailProps>((
           const isListActive = colorSource === 'list';
           const colorEnabled = isRailActive ? enableRailColorChange : (isListActive ? enableListColorChange : false);
 
-          const color = (() => {
-            if (colorEnabled && showList) {
-              if (index === activeIndex) return themeColor;
-              if (parsedColors) {
-                const ratio = (isDragging && waveIntensity > 0) ? Math.min(1, factor / waveIntensity) : 0;
-                const r = Math.round(parsedColors.c1.r + (parsedColors.c2.r - parsedColors.c1.r) * ratio);
-                const g = Math.round(parsedColors.c1.g + (parsedColors.c2.g - parsedColors.c1.g) * ratio);
-                const b = Math.round(parsedColors.c1.b + (parsedColors.c2.b - parsedColors.c1.b) * ratio);
-                return `rgb(${r}, ${g}, ${b})`;
-              }
-              return railActiveColor;
-            }
-            return letter === '*' ? themeColor : railColor;
-          })();
-
-          // Motion Blur & Scale calculations
-          const blurFactor = dist === 0 ? 0 : Math.exp(-dist * dist * 0.15) * motionBlurIntensity;
-          const scaleFactor = dist === 0 ? 0 : Math.exp(-dist * dist * 0.1) * motionBlurIntensity * 0.15;
+          const color = colorEnabled && showList && index === activeIndex
+            ? themeColor
+            : (letter === '*' ? themeColor : railColor);
 
           const dimOpacity = settings.emptyLetterMode === 'dim' && !hasAppSet.has(letter) ? 0.15 : 1;
-
-          const motionBlurOpacity = (enableMotionBlur && isSliding
-            ? 1 - blurFactor
-            : 1) * dimOpacity;
-
-          const motionBlurScale = enableMotionBlur && isSliding
-            ? 1 - scaleFactor
-            : 1;
 
           // 弯曲上限与整体平移
           const letterShift = Animated.add(
@@ -184,26 +269,25 @@ const LetterRail = React.memo(React.forwardRef<LetterRailRef, LetterRailProps>((
             wholeShift
           );
 
-          const waveTranslateX = isSliding
+          const waveTranslateX = isSliding && !settings.disableAnimation
             ? Animated.multiply(letterShift, directionMultiplier)
             : 0;
 
           const cumulativeFactor = cumulativeSpreadTable[index] || 0;
-          const waveTranslateY = isSliding && waveVerticalSpread > 0
+          const waveTranslateY = isSliding && waveVerticalSpread > 0 && !settings.disableAnimation
             ? Animated.multiply(pullX, cumulativeFactor * waveVerticalSpread)
             : 0;
 
           const transforms: any[] = [];
           if (waveTranslateX) transforms.push({ translateX: waveTranslateX });
           if (waveTranslateY) transforms.push({ translateY: waveTranslateY });
-          if (enableMotionBlur && isSliding) transforms.push({ scale: motionBlurScale });
 
           return (
             <Animated.View
               key={letter}
               style={[
                 transforms.length > 0 ? { transform: transforms } : undefined,
-                { opacity: motionBlurOpacity },
+                { opacity: dimOpacity },
               ]}
             >
               <Animated.Text
@@ -223,6 +307,16 @@ const LetterRail = React.memo(React.forwardRef<LetterRailRef, LetterRailProps>((
           );
         })}
       </View>
+
+      {isSliding && (
+        <AlphabetBubble
+          activeIndexAnim={activeIndexAnim}
+          railHeight={height}
+          pullX={pullX}
+          side={side}
+          alphabet={alphabet}
+        />
+      )}
     </View>
   );
 }));
@@ -241,6 +335,18 @@ const styles = StyleSheet.create({
   },
   letter: {
     fontSize: 11,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  bubble: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  bubbleText: {
+    color: '#fff',
+    fontSize: 22,
     fontWeight: 'bold',
     textAlign: 'center',
   },

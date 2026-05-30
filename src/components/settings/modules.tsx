@@ -1,9 +1,12 @@
 import React from 'react';
 import { AppSettings } from '../../types/settings';
-import { THEME_COLORS, RAIL_COLORS, RAIL_ACTIVE_COLORS } from '../../constants/defaultSettings';
+import { THEME_COLORS, RAIL_COLORS } from '../../constants/defaultSettings';
 import SettingModule from './SettingModule';
-import { SettingItem, SettingToggle, SettingSelector, SettingColor, SettingSliderItem, SettingToggleWithAction } from './SettingItems';
+import { SettingItem, SettingToggle, SettingSelector, SettingColor, SettingSliderItem, SettingToggleWithAction, SettingSubModule } from './SettingItems';
 import { t } from '../../i18n';
+
+const getThemeColor = (settings: AppSettings) =>
+  settings.themeColor === 'auto' ? (settings.currentWallpaperDominantColor || '#3b82f6') : settings.themeColor;
 
 interface AppearanceModuleProps {
   settings: AppSettings;
@@ -14,7 +17,7 @@ export const AppearanceModule: React.FC<AppearanceModuleProps> = ({ settings, on
   <SettingModule
     title={t('settings.appearance.title')}
     icon="🎨"
-    summary={settings.themeColor}
+    summary={settings.themeColor === 'auto' ? '自适应' : settings.themeColor}
   >
     <SettingColor
       label={t('settings.appearance.themeColor')}
@@ -30,7 +33,7 @@ export const AppearanceModule: React.FC<AppearanceModuleProps> = ({ settings, on
       max={1.4}
       step={0.05}
       unit="x"
-      themeColor={settings.themeColor}
+      themeColor={getThemeColor(settings)}
       onChange={(v) => onUpdate('fontScale', v)}
     />
   </SettingModule>
@@ -48,171 +51,154 @@ export const RailModule: React.FC<RailModuleProps> = ({ settings, onUpdate, onNa
     icon="📱"
     summary={settings.railSide === 'left' ? t('settings.rail.positionLeft') : t('settings.rail.positionRight')}
   >
-    <SettingSliderItem
-      label={t('settings.rail.height')}
-      value={settings.railHeight}
-      min={150}
-      max={800}
-      step={10}
-      unit="dp"
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('railHeight', v)}
-    />
-    <SettingSliderItem
-      label={t('settings.rail.length')}
-      value={settings.railLength}
-      min={0}
-      max={800}
-      step={5}
-      unit="dp"
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('railLength', v)}
-    />
-    <SettingSelector
-      label={t('settings.rail.position')}
-      options={[
-        { label: t('settings.rail.positionLeft'), value: 'left' },
-        { label: t('settings.rail.positionRight'), value: 'right' },
-      ]}
-      value={settings.railSide}
-      onChange={(v) => onUpdate('railSide', v as 'left' | 'right')}
-    />
-    <SettingSelector
-      label={t('settings.rail.emptyLetter')}
-      options={[
-        { label: t('settings.rail.emptyLetterHide'), value: 'hide' },
-        { label: t('settings.rail.emptyLetterDim'), value: 'dim' },
-      ]}
-      value={settings.emptyLetterMode}
-      onChange={(v) => onUpdate('emptyLetterMode', v as 'hide' | 'dim')}
-    />
-
-    <SettingSelector
-      label={t('settings.rail.font')}
-      options={[
-        { label: t('settings.rail.fontSystem'), value: 'system' },
-        { label: t('settings.rail.fontMonospace'), value: 'monospace' },
-        { label: t('settings.rail.fontSerif'), value: 'serif' },
-        { label: t('settings.rail.fontSansSerif'), value: 'sans-serif' },
-      ]}
-      value={settings.railFontFamily || 'system'}
-      onChange={(v) => onUpdate('railFontFamily', v as any)}
-    />
-    <SettingSelector
-      label={t('settings.rail.fontWeight')}
-      options={[
-        { label: t('settings.rail.fontWeightNormal'), value: 'normal' },
-        { label: t('settings.rail.fontWeightMedium'), value: '500' },
-        { label: t('settings.rail.fontWeightBold'), value: 'bold' },
-      ]}
-      value={settings.railFontWeight || 'bold'}
-      onChange={(v) => onUpdate('railFontWeight', v as any)}
-    />
-    <SettingSliderItem
-      label={t('settings.rail.fontSize')}
-      value={settings.railFontSize !== undefined ? settings.railFontSize : 11}
-      min={8}
-      max={18}
-      step={0.5}
-      unit="px"
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('railFontSize', v)}
-    />
-    <SettingColor
-      label={t('settings.rail.defaultColor')}
-      colors={RAIL_COLORS}
-      value={settings.railColor}
-      onChange={(v) => onUpdate('railColor', v)}
-      description={t('settings.rail.defaultColorDesc')}
-    />
-    <SettingColor
-      label={t('settings.rail.activeColor')}
-      colors={RAIL_ACTIVE_COLORS}
-      value={settings.railActiveColor}
-      onChange={(v) => onUpdate('railActiveColor', v)}
-      description={t('settings.rail.activeColorDesc')}
-    />
-
-    <SettingToggle
-      label={t('settings.rail.colorChange')}
-      value={settings.enableRailColorChange}
-      onChange={(v) => onUpdate('enableRailColorChange', v)}
-    />
-    <SettingToggleWithAction
-      label={t('settings.rail.vibration')}
-      value={settings.enableVibration}
-      onToggle={(v) => onUpdate('enableVibration', v)}
-      onAction={() => onNavigateToVibration?.()}
-    />
-    <SettingToggle
-      label={t('settings.rail.motionBlur')}
-      value={settings.enableMotionBlur}
-      onChange={(v) => onUpdate('enableMotionBlur', v)}
-    />
-    {settings.enableMotionBlur && (
+    <SettingSubModule title="基本布局 (Layout)">
       <SettingSliderItem
-        label="模糊强度"
-        value={settings.motionBlurIntensity}
-        min={0}
-        max={1}
-        step={0.05}
-        unit=""
-        themeColor={settings.themeColor}
-        onChange={(v) => onUpdate('motionBlurIntensity', v)}
-        formatValue={(v) => `${Math.round(v * 100)}%`}
+        label={t('settings.rail.height')}
+        value={settings.railHeight}
+        min={150}
+        max={800}
+        step={10}
+        unit="dp"
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('railHeight', v)}
       />
-    )}
-    <SettingToggle
-      label="#下方选中#"
-      value={settings.enableBottomRailSelect}
-      onChange={(v) => onUpdate('enableBottomRailSelect', v)}
-    />
-    <SettingToggle
-      label="*上方选中*"
-      value={settings.enableTopRailSelect}
-      onChange={(v) => onUpdate('enableTopRailSelect', v)}
-    />
+      <SettingSliderItem
+        label={t('settings.rail.length')}
+        value={settings.railLength}
+        min={0}
+        max={800}
+        step={5}
+        unit="dp"
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('railLength', v)}
+      />
+      <SettingSelector
+        label={t('settings.rail.position')}
+        options={[
+          { label: t('settings.rail.positionLeft'), value: 'left' },
+          { label: t('settings.rail.positionRight'), value: 'right' },
+        ]}
+        value={settings.railSide}
+        onChange={(v) => onUpdate('railSide', v as 'left' | 'right')}
+      />
+      <SettingSelector
+        label={t('settings.rail.emptyLetter')}
+        options={[
+          { label: t('settings.rail.emptyLetterHide'), value: 'hide' },
+          { label: t('settings.rail.emptyLetterDim'), value: 'dim' },
+        ]}
+        value={settings.emptyLetterMode}
+        onChange={(v) => onUpdate('emptyLetterMode', v as 'hide' | 'dim')}
+      />
+    </SettingSubModule>
 
-    <SettingSliderItem
-      label={t('settings.rail.waveIntensity')}
-      value={settings.waveIntensity}
-      min={0}
-      max={2}
-      step={0.1}
-      unit=""
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('waveIntensity', v)}
-    />
-    <SettingSliderItem
-      label={t('settings.rail.waveDecay')}
-      value={settings.waveDecay}
-      min={0.005}
-      max={0.1}
-      step={0.005}
-      unit=""
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('waveDecay', v)}
-    />
-    <SettingSliderItem
-      label={t('settings.rail.waveShapeCap')}
-      value={settings.waveShapeCap}
-      min={10}
-      max={100}
-      step={5}
-      unit="dp"
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('waveShapeCap', v)}
-    />
-    <SettingSliderItem
-      label={t('settings.rail.waveVerticalSpread')}
-      value={settings.waveVerticalSpread}
-      min={0.0}
-      max={2.0}
-      step={0.1}
-      unit=""
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('waveVerticalSpread', v)}
-    />
+    <SettingSubModule title="字体与样式 (Typography & Color)">
+      <SettingSelector
+        label={t('settings.rail.font')}
+        options={[
+          { label: t('settings.rail.fontSystem'), value: 'system' },
+          { label: t('settings.rail.fontMonospace'), value: 'monospace' },
+          { label: t('settings.rail.fontSerif'), value: 'serif' },
+          { label: t('settings.rail.fontSansSerif'), value: 'sans-serif' },
+        ]}
+        value={settings.railFontFamily || 'system'}
+        onChange={(v) => onUpdate('railFontFamily', v as any)}
+      />
+      <SettingSelector
+        label={t('settings.rail.fontWeight')}
+        options={[
+          { label: t('settings.rail.fontWeightNormal'), value: 'normal' },
+          { label: t('settings.rail.fontWeightMedium'), value: '500' },
+          { label: t('settings.rail.fontWeightBold'), value: 'bold' },
+        ]}
+        value={settings.railFontWeight || 'bold'}
+        onChange={(v) => onUpdate('railFontWeight', v as any)}
+      />
+      <SettingSliderItem
+        label={t('settings.rail.fontSize')}
+        value={settings.railFontSize !== undefined ? settings.railFontSize : 11}
+        min={8}
+        max={18}
+        step={0.5}
+        unit="px"
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('railFontSize', v)}
+      />
+      <SettingColor
+        label={t('settings.rail.defaultColor')}
+        colors={RAIL_COLORS}
+        value={settings.railColor}
+        onChange={(v) => onUpdate('railColor', v)}
+        description={t('settings.rail.defaultColorDesc')}
+      />
+      <SettingToggle
+        label={t('settings.rail.colorChange')}
+        value={settings.enableRailColorChange}
+        onChange={(v) => onUpdate('enableRailColorChange', v)}
+      />
+    </SettingSubModule>
+
+    <SettingSubModule title="波浪特效 (Wave Effects)">
+      <SettingSliderItem
+        label={t('settings.rail.waveIntensity')}
+        value={settings.waveIntensity}
+        min={0}
+        max={3}
+        step={0.1}
+        unit=""
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('waveIntensity', v)}
+      />
+      <SettingSliderItem
+        label={t('settings.rail.waveDecay')}
+        value={settings.waveDecay}
+        min={0.005}
+        max={0.1}
+        step={0.005}
+        unit=""
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('waveDecay', v)}
+      />
+      <SettingSliderItem
+        label={t('settings.rail.waveShapeCap')}
+        value={settings.waveShapeCap}
+        min={10}
+        max={100}
+        step={5}
+        unit="dp"
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('waveShapeCap', v)}
+      />
+      <SettingSliderItem
+        label={t('settings.rail.waveVerticalSpread')}
+        value={settings.waveVerticalSpread}
+        min={0.0}
+        max={2.0}
+        step={0.1}
+        unit=""
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('waveVerticalSpread', v)}
+      />
+    </SettingSubModule>
+
+    <SettingSubModule title="交互与反馈 (Interaction & Haptics)">
+      <SettingToggleWithAction
+        label={t('settings.rail.vibration')}
+        value={settings.enableVibration}
+        onToggle={(v) => onUpdate('enableVibration', v)}
+        onAction={() => onNavigateToVibration?.()}
+      />
+      <SettingToggle
+        label="#下方选中#"
+        value={settings.enableBottomRailSelect}
+        onChange={(v) => onUpdate('enableBottomRailSelect', v)}
+      />
+      <SettingToggle
+        label="*上方选中*"
+        value={settings.enableTopRailSelect}
+        onChange={(v) => onUpdate('enableTopRailSelect', v)}
+      />
+    </SettingSubModule>
   </SettingModule>
 );
 
@@ -234,7 +220,7 @@ export const BubbleModule: React.FC<BubbleModuleProps> = ({ settings, onUpdate }
       max={80}
       step={1}
       unit="px"
-      themeColor={settings.themeColor}
+      themeColor={getThemeColor(settings)}
       onChange={(v) => onUpdate('bubbleSize', v)}
     />
     <SettingSliderItem
@@ -244,7 +230,7 @@ export const BubbleModule: React.FC<BubbleModuleProps> = ({ settings, onUpdate }
       max={200}
       step={1}
       unit="px"
-      themeColor={settings.themeColor}
+      themeColor={getThemeColor(settings)}
       onChange={(v) => onUpdate('bubbleOffset', v)}
     />
   </SettingModule>
@@ -261,85 +247,90 @@ export const AppListModule: React.FC<AppListModuleProps> = ({ settings, onUpdate
     icon="📋"
     summary={`${settings.appItemHeight}px`}
   >
-    <SettingSliderItem
-      label="图标大小"
-      value={settings.iconSize}
-      min={32}
-      max={64}
-      step={1}
-      unit="px"
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('iconSize', v)}
-    />
-    <SettingSliderItem
-      label="列表项高度"
-      value={settings.appItemHeight}
-      min={48}
-      max={96}
-      step={1}
-      unit="px"
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('appItemHeight', v)}
-    />
-    <SettingSliderItem
-      label="滚动位置"
-      value={settings.focusScrollRatio}
-      min={0.25}
-      max={0.5}
-      step={0.01}
-      unit=""
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('focusScrollRatio', v)}
-      formatValue={(v) => `${Math.round(v * 100)}%`}
-    />
-    <SettingSliderItem
-      label="字母分组高度"
-      value={settings.headerHeight}
-      min={24}
-      max={64}
-      step={2}
-      unit="px"
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('headerHeight', v)}
-    />
-    <SettingSliderItem
-      label="应用名称字体大小"
-      value={settings.appNameFontSize}
-      min={12}
-      max={20}
-      step={1}
-      unit="px"
-      themeColor={settings.themeColor}
-      onChange={(v) => onUpdate('appNameFontSize', v)}
-    />
-    <SettingToggle
-      label="列表分割线"
-      value={settings.showDivider}
-      onChange={(v) => onUpdate('showDivider', v)}
-    />
-    <SettingToggle
-      label="应用列表变色"
-      value={settings.enableListColorChange}
-      onChange={(v) => onUpdate('enableListColorChange', v)}
-    />
-    <SettingToggle
-      label="轨道滑动聚焦"
-      value={settings.enableScrubMode}
-      onChange={(v) => onUpdate('enableScrubMode', v)}
-    />
-    {settings.enableScrubMode && (
+    <SettingSubModule title="布局与尺寸 (Layout & Sizes)">
       <SettingSliderItem
-        label="聚焦背景不透明度"
-        value={settings.scrubBgOpacity}
-        min={0}
-        max={1}
-        step={0.05}
+        label="图标大小"
+        value={settings.iconSize}
+        min={32}
+        max={64}
+        step={1}
+        unit="px"
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('iconSize', v)}
+      />
+      <SettingSliderItem
+        label="列表项高度"
+        value={settings.appItemHeight}
+        min={48}
+        max={96}
+        step={1}
+        unit="px"
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('appItemHeight', v)}
+      />
+      <SettingSliderItem
+        label="字母分组高度"
+        value={settings.headerHeight}
+        min={24}
+        max={64}
+        step={2}
+        unit="px"
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('headerHeight', v)}
+      />
+      <SettingSliderItem
+        label="应用名称字体大小"
+        value={settings.appNameFontSize}
+        min={12}
+        max={20}
+        step={1}
+        unit="px"
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('appNameFontSize', v)}
+      />
+    </SettingSubModule>
+
+    <SettingSubModule title="定位与交互 (Scroll & Focus)">
+      <SettingSliderItem
+        label="滚动位置"
+        value={settings.focusScrollRatio}
+        min={0.25}
+        max={0.5}
+        step={0.01}
         unit=""
-        themeColor={settings.themeColor}
-        onChange={(v) => onUpdate('scrubBgOpacity', v)}
+        themeColor={getThemeColor(settings)}
+        onChange={(v) => onUpdate('focusScrollRatio', v)}
         formatValue={(v) => `${Math.round(v * 100)}%`}
       />
-    )}
+      <SettingToggle
+        label="应用列表分割线"
+        value={settings.showDivider}
+        onChange={(v) => onUpdate('showDivider', v)}
+      />
+      <SettingToggle
+        label="应用列表变色"
+        value={settings.enableListColorChange}
+        onChange={(v) => onUpdate('enableListColorChange', v)}
+      />
+      <SettingToggle
+        label="轨道滑动聚焦"
+        value={settings.enableScrubMode}
+        onChange={(v) => onUpdate('enableScrubMode', v)}
+      />
+      {settings.enableScrubMode && (
+        <SettingSliderItem
+          label="聚焦背景不透明度"
+          value={settings.scrubBgOpacity}
+          min={0}
+          max={1}
+          step={0.05}
+          unit=""
+          themeColor={getThemeColor(settings)}
+          onChange={(v) => onUpdate('scrubBgOpacity', v)}
+          formatValue={(v) => `${Math.round(v * 100)}%`}
+        />
+      )}
+    </SettingSubModule>
   </SettingModule>
 );
 
@@ -352,7 +343,7 @@ export const FavoritesModule: React.FC<FavoritesModuleProps> = ({ settings, onUp
   <SettingModule
     title="收藏"
     icon="⭐"
-    summary={settings.favoritesHeightMode === 'fixed' ? '固定高度' : '自适应'}
+    summary="自适应"
   >
     <SettingSliderItem
       label="收藏图标大小"
@@ -361,7 +352,7 @@ export const FavoritesModule: React.FC<FavoritesModuleProps> = ({ settings, onUp
       max={72}
       step={1}
       unit="px"
-      themeColor={settings.themeColor}
+      themeColor={getThemeColor(settings)}
       onChange={(v) => onUpdate('favIconSize', v)}
     />
     <SettingSliderItem
@@ -371,7 +362,7 @@ export const FavoritesModule: React.FC<FavoritesModuleProps> = ({ settings, onUp
       max={6}
       step={1}
       unit="列"
-      themeColor={settings.themeColor}
+      themeColor={getThemeColor(settings)}
       onChange={(v) => onUpdate('favColumns', v)}
     />
     <SettingSelector
@@ -383,27 +374,7 @@ export const FavoritesModule: React.FC<FavoritesModuleProps> = ({ settings, onUp
       value={settings.favoritesDisplayStyle}
       onChange={(v) => onUpdate('favoritesDisplayStyle', v as 'grid' | 'list')}
     />
-    <SettingSelector
-      label="收藏区域高度模式"
-      options={[
-        { label: '固定高度', value: 'fixed' },
-        { label: '自适应', value: 'auto' },
-      ]}
-      value={settings.favoritesHeightMode}
-      onChange={(v) => onUpdate('favoritesHeightMode', v as 'fixed' | 'auto')}
-    />
-    {settings.favoritesHeightMode === 'fixed' && (
-      <SettingSliderItem
-        label="固定高度"
-        value={settings.favoritesFixedHeight}
-        min={150}
-        max={500}
-        step={10}
-        unit="px"
-        themeColor={settings.themeColor}
-        onChange={(v) => onUpdate('favoritesFixedHeight', v)}
-      />
-    )}
+
     <SettingSelector
       label="字母索引滚动目标"
       options={[

@@ -1,10 +1,10 @@
 import { ReactNode } from 'react';
-import { ViewStyle } from 'react-native';
+import { ViewStyle, StyleProp } from 'react-native';
 
 export interface EffectProps {
   intensity: number;
   children?: ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export type EffectCategory = 'background' | 'overlay' | 'accent';

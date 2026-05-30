@@ -8,8 +8,8 @@ import {
   PanResponder,
   Dimensions,
   Vibration,
-  Animated,
 } from 'react-native';
+import { AppAnimated as Animated } from '../../services/AnimationService';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { AppSettings } from '../../types/settings';
 import { ALPHABET } from '../../constants/defaultSettings';
@@ -69,31 +69,7 @@ const triggerHaptic = (effect: AppSettings['vibrationEffect'], intensity: number
   ReactNativeHapticFeedback.trigger(effect, { enableVibrateFallback: true, ignoreAndroidSystemSettings: false });
 };
 
-function interpolateHexColor(color1: string, color2: string, ratio: number): string {
-  const parseHex = (hex: string) => {
-    let cleaned = hex.replace('#', '');
-    if (cleaned.length === 3) {
-      cleaned = cleaned.split('').map(c => c + c).join('');
-    }
-    const num = parseInt(cleaned, 16);
-    return {
-      r: (num >> 16) & 255,
-      g: (num >> 8) & 255,
-      b: num & 255,
-    };
-  };
 
-  try {
-    const rgb1 = parseHex(color1);
-    const rgb2 = parseHex(color2);
-    const r = Math.round(rgb1.r + (rgb2.r - rgb1.r) * ratio);
-    const g = Math.round(rgb1.g + (rgb2.g - rgb1.g) * ratio);
-    const b = Math.round(rgb1.b + (rgb2.b - rgb1.b) * ratio);
-    return `rgb(${r}, ${g}, ${b})`;
-  } catch (e) {
-    return color2;
-  }
-}
 
 const VibrationSettings: React.FC<VibrationSettingsProps> = ({ settings, onUpdate, onConfirm, onBack }) => {
   const [selectedEffect, setSelectedEffect] = useState(settings.vibrationEffect);
@@ -124,9 +100,8 @@ const VibrationSettings: React.FC<VibrationSettingsProps> = ({ settings, onUpdat
   const bubbleSize = settings.bubbleSize;
   const bubbleOffset = settings.bubbleOffset;
   const { 
-    themeColor, railColor, railActiveColor, enableRailColorChange, waveIntensity, waveDecay, 
+    themeColor, railColor, enableRailColorChange, waveIntensity, waveDecay, 
     waveShapeCap, waveVerticalSpread,
-    enableMotionBlur, motionBlurIntensity,
     railFontFamily, railFontWeight, railFontSize 
   } = settings;
 
@@ -304,10 +279,15 @@ const VibrationSettings: React.FC<VibrationSettingsProps> = ({ settings, onUpdat
     );
   };
 
+  const containerBg = '#F2F2F7';
+  const headerBg = '#FFFFFF';
+  const leftPanelBg = '#FFFFFF';
+  const rightPanelBg = '#F2F2F7';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: containerBg }]}>
       {/* 顶部栏 */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: headerBg }]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
@@ -320,7 +300,7 @@ const VibrationSettings: React.FC<VibrationSettingsProps> = ({ settings, onUpdat
       {/* 内容区域 */}
       <View style={styles.content}>
         {/* 左侧：特效列表 */}
-        <View style={styles.leftPanel}>
+        <View style={[styles.leftPanel, { backgroundColor: leftPanelBg }]}>
           <FlatList
             data={HAPTIC_EFFECTS}
             renderItem={renderEffectItem}
@@ -354,7 +334,7 @@ const VibrationSettings: React.FC<VibrationSettingsProps> = ({ settings, onUpdat
         </View>
 
         {/* 右侧：轨道预览 - 复刻实际轨道 */}
-        <View style={styles.rightPanel} {...panResponder.panHandlers}>
+        <View style={[styles.rightPanel, { backgroundColor: rightPanelBg }]} {...panResponder.panHandlers}>
           {/* 字母轨道 */}
           <View style={[styles.railContainer, { top: railTop, height: railHeight }]}>
             {alphabet.map((letter, index) => {
@@ -365,37 +345,23 @@ const VibrationSettings: React.FC<VibrationSettingsProps> = ({ settings, onUpdat
               const cappedPull = Math.min(80, waveShapeCap);
               const wholeShift = Math.max(0, 80 - waveShapeCap);
               
-              const waveTranslateX = isSliding
+              const waveTranslateX = isSliding && !settings.disableAnimation
                 ? - (cappedPull * waveFactor + wholeShift)
                 : 0;
 
               // 纵向展开
               const cumulativeFactor = cumulativeSpreadTable[index] || 0;
-              const waveTranslateY = isSliding && waveVerticalSpread > 0
+              const waveTranslateY = isSliding && waveVerticalSpread > 0 && !settings.disableAnimation
                 ? 80 * cumulativeFactor * waveVerticalSpread
                 : 0;
 
-              // 运动模糊效果
-              const motionBlurOpacity = enableMotionBlur && isSliding
-                ? Math.max(0.3, 1 - dist * 0.25)
-                : 1;
-
               // 选中字母颜色
-              const ratio = (isSliding && waveIntensity > 0) ? Math.min(1, waveFactor / waveIntensity) : 0;
-              const baseColor = interpolateHexColor(railColor, railActiveColor, ratio);
-
-              const color = enableRailColorChange && isSliding
-                ? (dist === 0 ? themeColor : baseColor)
+              const color = enableRailColorChange && isSliding && dist === 0
+                ? themeColor
                 : (letter === '*' ? themeColor : railColor);
-
-              // 缩放效果
-              const motionBlurScale = enableMotionBlur && isSliding
-                ? 1 - dist * 0.03
-                : 1;
 
               const transforms: any[] = [
                 { translateX: waveTranslateX },
-                { scale: motionBlurScale },
               ];
               if (waveTranslateY !== 0) {
                 transforms.push({ translateY: waveTranslateY });
@@ -408,7 +374,7 @@ const VibrationSettings: React.FC<VibrationSettingsProps> = ({ settings, onUpdat
                     styles.letterWrapper,
                     {
                       height: letterHeight + gap,
-                      opacity: motionBlurOpacity,
+                      opacity: 1,
                       transform: transforms,
                     },
                   ]}
@@ -443,7 +409,7 @@ const VibrationSettings: React.FC<VibrationSettingsProps> = ({ settings, onUpdat
                 top: getLetterCenterY(activeIndex) - bubbleSize / 2,
                 right: bubbleOffset,
                 transform: [{
-                  translateX: isSliding 
+                  translateX: isSliding && !settings.disableAnimation
                     ? - (Math.min(80, waveShapeCap) * 1.3 * waveIntensity + Math.max(0, 80 - waveShapeCap))
                     : 0
                 }],
@@ -463,7 +429,7 @@ const VibrationSettings: React.FC<VibrationSettingsProps> = ({ settings, onUpdat
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
@@ -472,9 +438,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 50,
     paddingBottom: 16,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: 'transparent',
     borderBottomWidth: 0.5,
-    borderBottomColor: '#38383A',
+    borderBottomColor: '#E5E5EA',
   },
   backButton: {
     padding: 8,
@@ -484,7 +450,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   title: {
-    color: '#fff',
+    color: '#1C1C1E',
     fontSize: 17,
     fontWeight: '600',
   },
@@ -505,9 +471,9 @@ const styles = StyleSheet.create({
   },
   leftPanel: {
     flex: 1,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: 'transparent',
     borderRightWidth: 0.5,
-    borderRightColor: '#38383A',
+    borderRightColor: '#E5E5EA',
   },
   effectList: {
     paddingVertical: 8,
@@ -519,13 +485,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#2C2C2E',
+    borderBottomColor: '#F2F2F7',
   },
   effectItemSelected: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
   },
   effectLabel: {
-    color: '#ccc',
+    color: '#1C1C1E',
     fontSize: 15,
   },
   effectLabelSelected: {
@@ -540,7 +506,7 @@ const styles = StyleSheet.create({
   intensitySection: {
     padding: 16,
     borderTopWidth: 0.5,
-    borderTopColor: '#38383A',
+    borderTopColor: '#E5E5EA',
   },
   intensityLabel: {
     color: '#8E8E93',
@@ -555,7 +521,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#2C2C2E',
+    backgroundColor: '#F2F2F7',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -563,7 +529,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#3b82f6',
   },
   intensityText: {
-    color: '#8E8E93',
+    color: '#555',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -572,7 +538,7 @@ const styles = StyleSheet.create({
   },
   rightPanel: {
     width: 100,
-    backgroundColor: '#000',
+    backgroundColor: 'transparent',
     position: 'relative',
   },
   railContainer: {

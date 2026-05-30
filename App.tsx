@@ -10,17 +10,17 @@ import {
   Vibration,
   ActivityIndicator,
   TouchableOpacity,
-  Animated,
   Easing,
   BackHandler,
   InteractionManager,
 } from 'react-native';
+import { AppAnimated as Animated } from './src/services/AnimationService';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 
 import AppItem from './src/components/AppItem';
 import LetterRail, { LetterRailRef } from './src/components/LetterRail';
 import ScrubOverlay, { ScrubOverlayRef } from './src/components/ScrubOverlay';
-import AlphabetBubble from './src/components/AlphabetBubble';
+
 import FavoritesHeader from './src/components/FavoritesHeader';
 import SettingsView from './src/components/SettingsView';
 import AppContextMenu from './src/components/AppContextMenu';
@@ -64,6 +64,7 @@ function triggerHaptic(effect: AppSettings['vibrationEffect'], intensity: number
 
 function AppContent() {
   const { settings, isLoaded } = useSettingsContext();
+  const themeColor = settings.themeColor === 'auto' ? (settings.currentWallpaperDominantColor || '#3b82f6') : settings.themeColor;
 
   // ===== State =====
   const [isSliding, setIsSliding] = useState(false);
@@ -75,9 +76,7 @@ function AppContent() {
 
   const { alphabet: activeAlphabet } = useRailAlphabet(cachedApps);
   const [isDragging, setIsDragging] = useState(false);
-  const [favoritesHeight, setFavoritesHeight] = useState(
-    settings.favoritesHeightMode === 'fixed' ? settings.favoritesFixedHeight : 300
-  );
+  const [favoritesHeight, setFavoritesHeight] = useState(height);
   const scrubOpacity = useRef(new Animated.Value(0)).current;
   const scrubLetterRef = useRef<string | null>(null);
 
@@ -91,6 +90,7 @@ function AppContent() {
   const [favoritesRefreshKey, setFavoritesRefreshKey] = useState(0);
 
   // ===== Refs =====
+  const scrollYAnim = useRef(new Animated.Value(0)).current;
   const letterRailRef = useRef<LetterRailRef>(null);
   const scrubOverlayRef = useRef<ScrubOverlayRef>(null);
   const activeLetterRef = useRef<string | null>(null);
@@ -115,7 +115,7 @@ function AppContent() {
   const flatListRef = useRef<FlatList>(null);
   const bubbleYAnim = useRef(new Animated.Value(0)).current;
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
-  const listOpacity = useRef(new Animated.Value(1)).current;
+  const listOpacity = useRef(new Animated.Value(0)).current;
   const pullXAnim = useRef(new Animated.Value(0)).current;
   const favoritesHeightRef = useRef(favoritesHeight);
   const animationVersionRef = useRef(0);
@@ -244,11 +244,13 @@ function AppContent() {
   }, [showSettings, settings.enableBackToFavorites, contextMenuVisible, editDialogVisible]);
 
   useEffect(() => {
-    Animated.timing(listOpacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
-  }, []);
+    if (!loading && isLoaded) {
+      Animated.timing(listOpacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+    }
+  }, [loading, isLoaded]);
 
   // ===== 核心 handleTouch =====
-  const handleTouchRef = useRef<(y: number, currentRailTop: number) => void>();
+  const handleTouchRef = useRef<(y: number, currentRailTop: number) => void>(undefined);
 
   handleTouchRef.current = (yPosition: number, currentRailTop: number) => {
     const rh = railHeightRef.current;
@@ -325,7 +327,7 @@ function AppContent() {
     }
   };
 
-  const handleGrantRef = useRef<(y: number, side: 'left' | 'right') => void>();
+  const handleGrantRef = useRef<(y: number, side: 'left' | 'right') => void>(undefined);
 
   handleGrantRef.current = (y0: number, side: 'left' | 'right') => {
     const rh = railHeightRef.current;
@@ -652,7 +654,7 @@ function AppContent() {
       if (item.letter === '#') {
         return (
           <View style={[styles.sectionHeader, { height: HEADER_HEIGHT }]}>
-            <Text style={[styles.sectionLetter, { color: settings.themeColor }]}>#</Text>
+            <Text style={[styles.sectionLetter, { color: themeColor }]}>#</Text>
             {settings.showHeaderDivider && <View style={styles.sectionLine} />}
             <TouchableOpacity
               style={styles.settingsLink}
@@ -665,7 +667,7 @@ function AppContent() {
       }
       return (
         <View style={[styles.sectionHeader, { height: HEADER_HEIGHT }]}>
-          <Text style={[styles.sectionLetter, { color: settings.themeColor }]}>{item.letter}</Text>
+          <Text style={[styles.sectionLetter, { color: themeColor }]}>{item.letter}</Text>
           {settings.showHeaderDivider && <View style={styles.sectionLine} />}
         </View>
       );
@@ -685,7 +687,7 @@ function AppContent() {
       );
     }
     return null;
-  }, [onLaunchApp, handleLongPressApp, customizations, settings.themeColor, settings.showDivider, settings.showHeaderDivider]);
+  }, [onLaunchApp, handleLongPressApp, customizations, themeColor, settings.showDivider, settings.showHeaderDivider]);
 
   const getItemLayout = useCallback((_: any, index: number) => ({
     length: flatItems[index]?._type === 'header' ? HEADER_HEIGHT : settings.appItemHeight,
@@ -695,23 +697,15 @@ function AppContent() {
 
   const keyExtractor = useCallback((item: FlatItem) => item.id, []);
 
-  // ===== Render =====
-  if (loading || !isLoaded) {
-    return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color={settings.themeColor} />
-        <Text style={styles.hintText}>{t('common.loading')}</Text>
-      </View>
-    );
-  }
+
 
   const containerBg = 'transparent';
-  const listBg = `rgba(6,6,12,${settings.listBgOpacity})`;
+  const listBg = 'transparent';
 
   return (
     <View style={[styles.container, { backgroundColor: containerBg }]}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
-      <WallpaperBackground />
+      <WallpaperBackground scrollY={scrollYAnim} scrubOpacity={scrubOpacity} />
 
       {settings.showTouchZone && (
         <>
@@ -724,8 +718,8 @@ function AppContent() {
 
       <View style={[styles.appArea, { backgroundColor: listBg }]}>
         <Animated.View style={[styles.listContainer, { opacity: listOpacity }]}>
-          <FlatList
-            ref={flatListRef}
+          <Animated.FlatList
+            ref={flatListRef as any}
             data={flatItems}
             keyExtractor={keyExtractor}
             renderItem={renderItem}
@@ -741,18 +735,22 @@ function AppContent() {
             ListHeaderComponent={
               <FavoritesHeader
                 onLayout={(h) => {
-                  if (settings.favoritesHeightMode === 'auto') {
-                    setFavoritesHeight(h);
-                  }
+                  setFavoritesHeight(h);
                 }}
                 onLongPressApp={handleLongPressApp}
                 customizations={customizations}
                 refreshKey={favoritesRefreshKey}
               />
             }
-            onScroll={(e) => {
-              scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
-            }}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollYAnim } } }],
+              {
+                useNativeDriver: true,
+                listener: (e: any) => {
+                  scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
+                },
+              }
+            )}
             scrollEventThrottle={16}
           />
         </Animated.View>
@@ -769,16 +767,7 @@ function AppContent() {
 
       <View style={styles.gestureStripRight} {...rightPanResponder.panHandlers} />
 
-      {isSliding && (
-        <AlphabetBubble
-          activeIndexAnim={activeIndexAnim}
-          railTop={railTop}
-          railHeight={settings.railHeight}
-          pullX={pullXAnim}
-          side={settings.railSide}
-          apps={cachedApps}
-        />
-      )}
+
 
       <LetterRail
         ref={letterRailRef}

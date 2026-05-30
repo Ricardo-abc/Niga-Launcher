@@ -10,83 +10,14 @@ interface DevSettingsProps {
 }
 
 const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }) => {
+  const themeColor = settings.themeColor === 'auto' ? (settings.currentWallpaperDominantColor || '#3b82f6') : settings.themeColor;
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* 动画参数 */}
       <View style={styles.section}>
         <Text style={styles.sectionHeader}>动画参数</Text>
         <View style={styles.card}>
-          <View style={styles.cardItem}>
-            <SettingSlider
-              label="波浪强度"
-              value={settings.waveIntensity}
-              min={0}
-              max={2}
-              step={0.1}
-              unit=""
-              themeColor={settings.themeColor}
-              onChange={(v) => onUpdate('waveIntensity', v)}
-            />
-            <Text style={styles.description}>
-              控制字母轨道波浪动画的幅度。值越大，波浪效果越明显。超过1为增强模式。
-            </Text>
-          </View>
 
-          <View style={styles.divider} />
-
-          <View style={styles.cardItem}>
-            <SettingSlider
-              label="波浪衰减"
-              value={settings.waveDecay}
-              min={0.001}
-              max={0.5}
-              step={0.001}
-              unit=""
-              themeColor={settings.themeColor}
-              onChange={(v) => onUpdate('waveDecay', v)}
-            />
-            <Text style={styles.description}>
-              波浪衰减系数。值越小，波浪传播越远；值越大，波浪越集中。
-            </Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.cardItem}>
-            <SettingSlider
-              label="波浪弯曲上限"
-              value={settings.waveShapeCap}
-              min={10}
-              max={100}
-              step={5}
-              unit="dp"
-              themeColor={settings.themeColor}
-              onChange={(v) => onUpdate('waveShapeCap', v)}
-            />
-            <Text style={styles.description}>
-              限制波浪最大弯曲拉伸幅度，超出部分作为轨道整体横向平移。
-            </Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.cardItem}>
-            <SettingSlider
-              label="波浪纵向展开"
-              value={settings.waveVerticalSpread}
-              min={0.0}
-              max={2.0}
-              step={0.1}
-              unit=""
-              themeColor={settings.themeColor}
-              onChange={(v) => onUpdate('waveVerticalSpread', v)}
-            />
-            <Text style={styles.description}>
-              拉拽波浪时，字母之间的纵向拉伸间隔。
-            </Text>
-          </View>
-
-          <View style={styles.divider} />
 
           <View style={styles.cardItem}>
             <SettingSlider
@@ -96,7 +27,7 @@ const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }
               max={2.5}
               step={0.1}
               unit="x"
-              themeColor={settings.themeColor}
+              themeColor={themeColor}
               onChange={(v) => onUpdate('activeScale', v)}
             />
             <Text style={styles.description}>
@@ -114,7 +45,7 @@ const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }
               max={1.5}
               step={0.05}
               unit="x"
-              themeColor={settings.themeColor}
+              themeColor={themeColor}
               onChange={(v) => onUpdate('neighborScale', v)}
             />
             <Text style={styles.description}>
@@ -132,7 +63,7 @@ const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }
               max={500}
               step={10}
               unit="ms"
-              themeColor={settings.themeColor}
+              themeColor={themeColor}
               onChange={(v) => onUpdate('animationDuration', v)}
             />
             <Text style={styles.description}>
@@ -150,7 +81,7 @@ const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }
               max={20}
               step={1}
               unit=""
-              themeColor={settings.themeColor}
+              themeColor={themeColor}
               onChange={(v) => onUpdate('springFriction', v)}
             />
             <Text style={styles.description}>
@@ -168,7 +99,7 @@ const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }
               max={300}
               step={10}
               unit=""
-              themeColor={settings.themeColor}
+              themeColor={themeColor}
               onChange={(v) => onUpdate('springTension', v)}
             />
             <Text style={styles.description}>
@@ -190,7 +121,7 @@ const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }
               max={1}
               step={0.05}
               unit=""
-              themeColor={settings.themeColor}
+              themeColor={themeColor}
               onChange={(v) => onUpdate('bubbleOpacity', v)}
             />
             <Text style={styles.description}>
@@ -208,7 +139,7 @@ const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }
               max={1}
               step={0.05}
               unit=""
-              themeColor={settings.themeColor}
+              themeColor={themeColor}
               onChange={(v) => onUpdate('shadowIntensity', v)}
             />
             <Text style={styles.description}>
@@ -226,7 +157,7 @@ const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }
               max={24}
               step={1}
               unit="px"
-              themeColor={settings.themeColor}
+              themeColor={themeColor}
               onChange={(v) => onUpdate('iconBorderRadius', v)}
             />
             <Text style={styles.description}>
@@ -248,7 +179,7 @@ const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }
             <Switch
               value={settings.disableAnimation}
               onValueChange={(v) => onUpdate('disableAnimation', v)}
-              trackColor={{ false: '#39393D', true: settings.themeColor }}
+              trackColor={{ false: '#E5E5EA', true: themeColor }}
               thumbColor="#fff"
             />
           </View>
@@ -263,7 +194,7 @@ const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }
             <Switch
               value={settings.showTouchZone}
               onValueChange={(v) => onUpdate('showTouchZone', v)}
-              trackColor={{ false: '#39393D', true: settings.themeColor }}
+              trackColor={{ false: '#E5E5EA', true: themeColor }}
               thumbColor="#fff"
             />
           </View>
@@ -278,7 +209,7 @@ const DevSettings: React.FC<DevSettingsProps> = ({ settings, onUpdate, onReset }
             <Switch
               value={settings.showRailBounds}
               onValueChange={(v) => onUpdate('showRailBounds', v)}
-              trackColor={{ false: '#39393D', true: settings.themeColor }}
+              trackColor={{ false: '#E5E5EA', true: themeColor }}
               thumbColor="#fff"
             />
           </View>
@@ -340,16 +271,23 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   card: {
-    backgroundColor: '#1C1C1E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardItem: {
     padding: 16,
   },
   divider: {
     height: 0.5,
-    backgroundColor: '#38383A',
+    backgroundColor: '#E5E5EA',
     marginLeft: 16,
   },
   description: {
@@ -369,7 +307,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   switchLabel: {
-    color: '#fff',
+    color: '#1C1C1E',
     fontSize: 16,
     fontWeight: '400',
   },
@@ -387,17 +325,17 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: '#2C2C2E',
+    backgroundColor: '#F2F2F7',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'transparent',
   },
   logOptionActive: {
     borderColor: '#3b82f6',
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
   },
   logText: {
-    color: '#ccc',
+    color: '#555',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -406,13 +344,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   resetButton: {
-    backgroundColor: 'rgba(255, 69, 58, 0.12)',
+    backgroundColor: 'rgba(255, 59, 48, 0.12)',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
   },
   resetText: {
-    color: '#FF453A',
+    color: '#FF3B30',
     fontSize: 16,
     fontWeight: '400',
   },

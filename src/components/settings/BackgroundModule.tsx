@@ -1,12 +1,12 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, AppState } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { AppSettings } from '../../types/settings';
 import SettingModule from './SettingModule';
-import { SettingItem, SettingToggle, SettingSelector, SettingSliderItem } from './SettingItems';
+import { SettingItem, SettingToggle, SettingSelector, SettingMultiSelector, SettingSliderItem, SettingSubModule } from './SettingItems';
 import { getEffectNames, getEffect } from '../../effects/registry';
-import { setWallpaper } from '../../modules/WallpaperBridge';
+import { setWallpaper, isLiveWallpaperActive, openLiveWallpaperSettings } from '../../modules/WallpaperBridge';
 import WallpaperCarousel from '../WallpaperCarousel';
 
 interface BackgroundModuleProps {
@@ -29,9 +29,66 @@ const BackgroundModule: React.FC<BackgroundModuleProps> = ({ settings, onUpdate 
     ...getEffectNames().map(e => ({ label: e.name, value: e.key })),
   ];
 
+  const [isServiceActive, setIsServiceActive] = React.useState(false);
+
+  const getDimmingTargetValue = (target: 'always' | ('scrub' | 'appList')[]) => {
+    if (target === 'always') return 'always';
+    if (target.includes('scrub') && target.includes('appList')) return 'both';
+    if (target.includes('scrub')) return 'scrub';
+    if (target.includes('appList')) return 'appList';
+    return 'always';
+  };
+
+  const handleDimmingTargetChange = (val: string) => {
+    if (val === 'always') {
+      onUpdate('wallpaperDimmingTarget', 'always');
+    } else if (val === 'both') {
+      onUpdate('wallpaperDimmingTarget', ['scrub', 'appList']);
+    } else if (val === 'scrub') {
+      onUpdate('wallpaperDimmingTarget', ['scrub']);
+    } else if (val === 'appList') {
+      onUpdate('wallpaperDimmingTarget', ['appList']);
+    }
+  };
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const checkService = async () => {
+      const active = await isLiveWallpaperActive();
+      if (isMounted) setIsServiceActive(active);
+    };
+    checkService();
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkService();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  const handleEnableService = async () => {
+    try {
+      await openLiveWallpaperSettings();
+    } catch (e) {
+      Alert.alert('错误', '无法打开壁纸设置');
+    }
+  };
+
 
   const handleAddWallpaper = async () => {
     try {
+      // Request media library permission explicitly before opening picker
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('权限不足', '需要相册访问权限才能选择壁纸。请在系统设置中启用该权限。');
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 0.7,
@@ -70,9 +127,9 @@ const BackgroundModule: React.FC<BackgroundModuleProps> = ({ settings, onUpdate 
         onUpdate('currentWallpaperIndex', 0);
         setWallpaper(newUris[0]);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('[Wallpaper] Add failed:', e);
-      Alert.alert('错误', '添加壁纸失败');
+      Alert.alert('错误', `添加壁纸失败: ${e?.message || e}`);
     }
   };
 
@@ -135,9 +192,11 @@ const BackgroundModule: React.FC<BackgroundModuleProps> = ({ settings, onUpdate 
   const hasWallpapers = settings.wallpapers.length > 0;
   const bgEnabled = settings.enableBackgroundImage && hasWallpapers;
 
-  const currentOverlayEffect = settings.overlayEffect ? getEffect(settings.overlayEffect) : null;
-  const overlayIntensity = currentOverlayEffect
-    ? { min: currentOverlayEffect.minIntensity, max: currentOverlayEffect.maxIntensity }
+
+
+  const currentSettingsBgEffect = settings.settingsBgEffect ? getEffect(settings.settingsBgEffect) : null;
+  const settingsBgIntensity = currentSettingsBgEffect
+    ? { min: currentSettingsBgEffect.minIntensity, max: currentSettingsBgEffect.maxIntensity }
     : { min: 10, max: 80 };
 
   return (
@@ -146,127 +205,149 @@ const BackgroundModule: React.FC<BackgroundModuleProps> = ({ settings, onUpdate 
       icon="🖼️"
       summary={bgEnabled ? settings.wallpapers.length + '张壁纸' : '默认'}
     >
-      <SettingItem label="壁纸库">
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.pickButton} onPress={handleAddWallpaper} activeOpacity={0.7}>
-            <Text style={styles.pickButtonText}>+ 相册</Text>
-          </TouchableOpacity>
-        </View>
-      </SettingItem>
+      <SettingSubModule title="壁纸选择 (Wallpaper Setup)">
+        <SettingItem label="壁纸库">
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.pickButton} onPress={handleAddWallpaper} activeOpacity={0.7}>
+              <Text style={styles.pickButtonText}>+ 相册</Text>
+            </TouchableOpacity>
+          </View>
+        </SettingItem>
 
-      {hasWallpapers && (
-        <WallpaperCarousel
-          wallpapers={settings.wallpapers}
-          currentIndex={settings.currentWallpaperIndex}
-          onSelect={handleSelectWallpaper}
-          onReorder={handleReorder}
-          onDelete={handleDeleteWallpaper}
-        />
-      )}
+        {hasWallpapers && (
+          <WallpaperCarousel
+            wallpapers={settings.wallpapers}
+            currentIndex={settings.currentWallpaperIndex}
+            onSelect={handleSelectWallpaper}
+            onReorder={handleReorder}
+            onDelete={handleDeleteWallpaper}
+          />
+        )}
 
-      {hasWallpapers && (
-        <>
-          <SettingToggle
-            label="启用壁纸"
-            value={settings.enableBackgroundImage}
-            onChange={(v) => {
-              onUpdate('enableBackgroundImage', v);
-              if (v) {
-                const uri = settings.wallpapers[settings.currentWallpaperIndex];
-                if (uri) setWallpaper(uri);
-              }
-            }}
-          />
-          <SettingSelector
-            label="壁纸模式"
-            options={[
-              { label: "固定", value: "fixed" },
-              { label: "随机", value: "shuffle" },
-              { label: "顺序轮换", value: "sequential" },
-              { label: "定时切换", value: "timer" },
-              { label: "每次解锁", value: "onUnlock" },
-            ]}
-            value={settings.wallpaperMode}
-            onChange={(v) => onUpdate('wallpaperMode', v as any)}
-          />
-          {settings.wallpaperMode === 'timer' && (
-            <SettingItem label="切换间隔">
-              <View style={styles.timerOptions}>
-                {TIMER_OPTIONS.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[styles.timerOption, settings.wallpaperTimerInterval === opt.value && styles.timerOptionActive]}
-                    onPress={() => onUpdate('wallpaperTimerInterval', opt.value)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.timerOptionText, settings.wallpaperTimerInterval === opt.value && styles.timerOptionTextActive]}>
-                      {opt.label}
-                    </Text>
+        {hasWallpapers && (
+          <>
+            <SettingToggle
+              label="启用壁纸"
+              value={settings.enableBackgroundImage}
+              onChange={(v) => {
+                onUpdate('enableBackgroundImage', v);
+                if (v) {
+                  const uri = settings.wallpapers[settings.currentWallpaperIndex];
+                  if (uri) setWallpaper(uri);
+                }
+              }}
+            />
+            <SettingItem label="原生壁纸服务">
+              <View style={styles.buttonRow}>
+                {isServiceActive ? (
+                  <Text style={styles.serviceActiveText}>🟢 运行中（壁纸由系统底层渲染，极省内存）</Text>
+                ) : (
+                  <TouchableOpacity style={styles.serviceButton} onPress={handleEnableService} activeOpacity={0.7}>
+                    <Text style={styles.serviceButtonText}>激活原生壁纸</Text>
                   </TouchableOpacity>
-                ))}
+                )}
               </View>
             </SettingItem>
-          )}
-          {settings.wallpaperMode === "onUnlock" && (
-            <Text style={styles.hintText}>每次解锁屏幕时自动切换下一张壁纸</Text>
-          )}
-        </>
-      )}
+            <SettingSelector
+              label="壁纸模式"
+              options={[
+                { label: "固定", value: "fixed" },
+                { label: "随机", value: "shuffle" },
+                { label: "顺序轮换", value: "sequential" },
+                { label: "定时切换", value: "timer" },
+                { label: "每次解锁", value: "onUnlock" },
+              ]}
+              value={settings.wallpaperMode}
+              onChange={(v) => onUpdate('wallpaperMode', v as any)}
+            />
+            {settings.wallpaperMode === 'timer' && (
+              <SettingItem label="切换间隔">
+                <View style={styles.timerOptions}>
+                  {TIMER_OPTIONS.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[styles.timerOption, settings.wallpaperTimerInterval === opt.value && styles.timerOptionActive]}
+                      onPress={() => onUpdate('wallpaperTimerInterval', opt.value)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.timerOptionText, settings.wallpaperTimerInterval === opt.value && styles.timerOptionTextActive]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </SettingItem>
+            )}
+            {settings.wallpaperMode === "onUnlock" && (
+              <Text style={styles.hintText}>每次解锁屏幕时自动切换下一张壁纸</Text>
+            )}
+          </>
+        )}
+      </SettingSubModule>
 
-      <View style={styles.divider} />
-
-      <Text style={styles.sectionHint}>
-        {bgEnabled ? '毛玻璃效果需要壁纸才能看到' : '先添加壁纸再设置效果'}
-      </Text>
-
-      <SettingSelector
-        label="覆盖层效果"
-        options={effectOptions}
-        value={settings.overlayEffect}
-        onChange={(v) => onUpdate('overlayEffect', v)}
-      />
-
-      {settings.overlayEffect ? (
-        <SettingSliderItem
-          label="覆盖层强度"
-          value={settings.overlayEffectIntensity}
-          min={overlayIntensity.min}
-          max={overlayIntensity.max}
-          step={1}
-          unit=""
-          themeColor={settings.themeColor}
-          onChange={(v) => onUpdate('overlayEffectIntensity', v)}
+      <SettingSubModule title="壁纸暗度调节 (Wallpaper Dimming)">
+        <SettingToggle
+          label="壁纸暗度自动适配"
+          value={settings.enableAutoDimming}
+          onChange={(v) => onUpdate('enableAutoDimming', v)}
         />
-      ) : null}
+        {!settings.enableAutoDimming && (
+          <SettingSliderItem
+            label="壁纸暗化程度"
+            value={settings.wallpaperDimming}
+            min={0}
+            max={0.8}
+            step={0.05}
+            unit=""
+            themeColor={settings.themeColor === 'auto' ? (settings.currentWallpaperDominantColor || '#3b82f6') : settings.themeColor}
+            onChange={(v) => onUpdate('wallpaperDimming', v)}
+            formatValue={(v) => Math.round(v * 100) + '%'}
+          />
+        )}
+        <SettingSelector
+          label="暗化应用范围"
+          options={[
+            { label: "总是应用", value: "always" },
+            { label: "仅聚焦滑动时", value: "scrub" },
+            { label: "仅列表滚动时", value: "appList" },
+            { label: "滑动与滚动时", value: "both" },
+          ]}
+          value={getDimmingTargetValue(settings.wallpaperDimmingTarget)}
+          onChange={handleDimmingTargetChange}
+        />
+        <SettingSelector
+          label="暗化遮罩颜色"
+          options={[
+            { label: "黑色", value: "black" },
+            { label: "跟随主题色", value: "theme" },
+            { label: "壁纸自适应", value: "auto" },
+          ]}
+          value={settings.wallpaperDimmingColor}
+          onChange={(v) => onUpdate('wallpaperDimmingColor', v)}
+        />
+      </SettingSubModule>
 
-      <SettingSliderItem
-        label="列表背景透明度"
-        value={settings.listBgOpacity}
-        min={0}
-        max={1}
-        step={0.05}
-        unit=""
-        themeColor={settings.themeColor}
-        onChange={(v) => onUpdate('listBgOpacity', v)}
-        formatValue={(v) => Math.round(v * 100) + '%'}
-      />
+
     </SettingModule>
   );
 };
 
 const styles = StyleSheet.create({
-  buttonRow: { flexDirection: 'row', gap: 8 },
-  pickButton: { backgroundColor: '#2C2C2E', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: '#3b82f6' },
+  buttonRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  pickButton: { backgroundColor: '#F2F2F7', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: '#3b82f6' },
   pickButtonText: { color: '#3b82f6', fontSize: 14, fontWeight: '600' },
+  serviceButton: { backgroundColor: '#F2F2F7', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: '#3b82f6' },
+  serviceButtonText: { color: '#3b82f6', fontSize: 13, fontWeight: '600' },
+  serviceActiveText: { color: '#34C759', fontSize: 13, fontWeight: '500', flex: 1 },
 
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 12 },
-  sectionHint: { color: '#666', fontSize: 12, marginBottom: 8 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#E5E5EA', marginVertical: 12 },
+  sectionHint: { color: '#8E8E93', fontSize: 12, marginBottom: 8 },
   timerOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  timerOption: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#2C2C2E', borderWidth: 1, borderColor: 'transparent' },
-  timerOptionActive: { borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)' },
-  timerOptionText: { color: '#ccc', fontSize: 13, fontWeight: '500' },
+  timerOption: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#F2F2F7', borderWidth: 1, borderColor: 'transparent' },
+  timerOptionActive: { borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)' },
+  timerOptionText: { color: '#555', fontSize: 13, fontWeight: '500' },
   timerOptionTextActive: { color: "#3b82f6", fontWeight: "600" },
-  hintText: { color: "#888", fontSize: 12, marginTop: 4, marginLeft: 4 },
+  hintText: { color: "#8E8E93", fontSize: 12, marginTop: 4, marginLeft: 4 },
 });
 
 export default BackgroundModule;

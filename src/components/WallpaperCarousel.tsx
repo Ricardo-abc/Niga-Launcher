@@ -1,16 +1,16 @@
-﻿import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   View,
   Image,
   Text,
   TouchableOpacity,
-  Animated,
   PanResponder,
   Dimensions,
   Alert,
   Vibration,
 } from 'react-native';
+import { AppAnimated as Animated } from '../services/AnimationService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PREVIEW_WIDTH = SCREEN_WIDTH - 80;

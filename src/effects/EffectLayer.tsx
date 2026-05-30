@@ -1,12 +1,12 @@
 import React from 'react';
-import { View, ViewStyle } from 'react-native';
+import { View, ViewStyle, StyleProp } from 'react-native';
 import { getEffect } from './registry';
 
 interface EffectLayerProps {
   effectKey: string;
   intensity?: number;
   children?: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 const EffectLayer: React.FC<EffectLayerProps> = ({ effectKey, intensity, children, style }) => {
