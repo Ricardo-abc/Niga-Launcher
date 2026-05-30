@@ -42,7 +42,13 @@
 - JDK 17
 - Expo CLI (`npm install -g expo-cli`)
 
-## 快速开始
+## 下载与安装
+
+### 下载 APK
+
+前往 [Releases](https://github.com/Ricardo-abc/Niga-Launcher/releases/latest) 下载最新版本 APK。
+
+### 从源码构建
 
 ### 安装依赖
 

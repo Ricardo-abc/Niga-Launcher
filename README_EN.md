@@ -42,7 +42,13 @@ An alphabet navigation launcher app based on React Native (Expo), supporting qui
 - JDK 17
 - Expo CLI (`npm install -g expo-cli`)
 
-## Quick Start
+## Download & Install
+
+### Download APK
+
+Go to [Releases](https://github.com/Ricardo-abc/Niga-Launcher/releases/latest) to download the latest APK.
+
+### Build from Source
 
 ### Install Dependencies
 
