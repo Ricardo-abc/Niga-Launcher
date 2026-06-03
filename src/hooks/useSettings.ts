@@ -37,6 +37,15 @@ function syncMeta(settings: AppSettings) {
       resolvedColor
     ).catch(() => {});
     syncAllWallpapers(settings.wallpapers).catch(() => {});
+  } else {
+    // Background image disabled or no wallpapers: sync 0 dimming to native side
+    syncWallpaperMeta(
+      settings.wallpaperMode,
+      settings.currentWallpaperIndex,
+      settings.wallpapers.length,
+      0,
+      '#000000'
+    ).catch(() => {});
   }
 }
 
@@ -220,7 +229,10 @@ export function useSettings() {
         key === 'currentWallpaperIndex' ||
         key === 'wallpapers' ||
         key === 'wallpaperDimming' ||
-        key === 'enableAutoDimming'
+        key === 'enableAutoDimming' ||
+        key === 'wallpaperDimmingTarget' ||
+        key === 'wallpaperDimmingColor' ||
+        key === 'enableBackgroundImage'
       ) {
         syncMeta(newSettings);
       }

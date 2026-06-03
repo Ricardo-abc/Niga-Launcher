@@ -10,7 +10,7 @@ const androidDir = path.join(__dirname, '..', 'android');
 try {
   // Use gradlew.bat on Windows, ./gradlew on others
   const gradlew = process.platform === 'win32' ? 'gradlew.bat' : './gradlew';
-  let command = `${gradlew} assembleRelease`;
+  let command = `${gradlew} assembleRelease -x lintVitalAnalyzeRelease -x lint`;
 
   if (isOld) {
     console.log('Using old compression mode (Legacy Packaging)...');

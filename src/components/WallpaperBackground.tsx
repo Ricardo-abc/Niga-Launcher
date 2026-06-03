@@ -52,33 +52,40 @@ const WallpaperBackground: React.FC<WallpaperBackgroundProps> = ({ scrollY, scru
       return maxDimming;
     }
 
-    const animParts: Animated.Animated[] = [];
-
-    if (isScrub && scrubOpacity) {
-      animParts.push(scrubOpacity.interpolate({
+    if (isScrub && isAppList && scrubOpacity && scrollY) {
+      const scrubPart = scrubOpacity.interpolate({
         inputRange: [0, 1],
         outputRange: [0, maxDimming],
-      }));
-    } else {
-      animParts.push(new Animated.Value(0));
-    }
-
-    if (isAppList && scrollY) {
-      animParts.push(scrollY.interpolate({
+      });
+      const scrollPart = scrollY.interpolate({
         inputRange: [40, 200],
         outputRange: [0, maxDimming],
         extrapolate: 'clamp',
-      }));
-    } else {
-      animParts.push(new Animated.Value(0));
+      });
+      const combined = Animated.add(scrubPart, scrollPart);
+      return combined.interpolate({
+        inputRange: [0, maxDimming, maxDimming * 2],
+        outputRange: [0, maxDimming, maxDimming],
+        extrapolate: 'clamp',
+      });
     }
 
-    const combined = Animated.add(animParts[0], animParts[1]);
-    return combined.interpolate({
-      inputRange: [0, maxDimming, maxDimming * 2],
-      outputRange: [0, maxDimming, maxDimming],
-      extrapolate: 'clamp',
-    });
+    if (isScrub && scrubOpacity) {
+      return scrubOpacity.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, maxDimming],
+      });
+    }
+
+    if (isAppList && scrollY) {
+      return scrollY.interpolate({
+        inputRange: [40, 200],
+        outputRange: [0, maxDimming],
+        extrapolate: 'clamp',
+      });
+    }
+
+    return 0;
   })();
 
   const overlayColor = resolveDimmingColor(settings);

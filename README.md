@@ -56,6 +56,14 @@
 npm install
 ```
 
+### 生成原生平台文件（首次运行或构建前必需）
+
+由于原生平台文件夹 (`/android`) 默认被 `.gitignore` 忽略，在首次运行或构建 APK 前，必须生成 Android 原生项目结构：
+
+```bash
+npx expo prebuild --platform android
+```
+
 ### 启动开发服务器
 
 ```bash

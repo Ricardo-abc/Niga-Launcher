@@ -39,7 +39,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // 收藏区域
   favoritesHeightMode: 'auto',
   favoritesFixedHeight: 300,
-  favoritesDisplayStyle: 'grid',
+  favoritesDisplayStyle: 'list',
   letterScrollTarget: 'appList',
   enableBackToFavorites: true,
 
@@ -57,7 +57,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   scrubBgOpacity: 0,
   wallpaperDimming: 0.3,
   enableAutoDimming: true,
-  wallpaperDimmingTarget: 'always',
+  wallpaperDimmingTarget: ['scrub'],
   wallpaperDimmingColor: 'black',
   currentWallpaperIsDark: true,
   currentWallpaperDominantColor: '#3b82f6',

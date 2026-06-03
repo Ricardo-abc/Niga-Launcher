@@ -33,9 +33,11 @@ const BackgroundModule: React.FC<BackgroundModuleProps> = ({ settings, onUpdate 
 
   const getDimmingTargetValue = (target: 'always' | ('scrub' | 'appList')[]) => {
     if (target === 'always') return 'always';
-    if (target.includes('scrub') && target.includes('appList')) return 'both';
-    if (target.includes('scrub')) return 'scrub';
-    if (target.includes('appList')) return 'appList';
+    if (Array.isArray(target)) {
+      if (target.includes('scrub') && target.includes('appList')) return 'both';
+      if (target.includes('scrub')) return 'scrub';
+      if (target.includes('appList')) return 'always'; // fallback since appList is removed
+    }
     return 'always';
   };
 
@@ -46,8 +48,6 @@ const BackgroundModule: React.FC<BackgroundModuleProps> = ({ settings, onUpdate 
       onUpdate('wallpaperDimmingTarget', ['scrub', 'appList']);
     } else if (val === 'scrub') {
       onUpdate('wallpaperDimmingTarget', ['scrub']);
-    } else if (val === 'appList') {
-      onUpdate('wallpaperDimmingTarget', ['appList']);
     }
   };
 
@@ -309,7 +309,6 @@ const BackgroundModule: React.FC<BackgroundModuleProps> = ({ settings, onUpdate 
           options={[
             { label: "总是应用", value: "always" },
             { label: "仅聚焦滑动时", value: "scrub" },
-            { label: "仅列表滚动时", value: "appList" },
             { label: "滑动与滚动时", value: "both" },
           ]}
           value={getDimmingTargetValue(settings.wallpaperDimmingTarget)}

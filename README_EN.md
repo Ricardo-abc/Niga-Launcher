@@ -56,6 +56,14 @@ Go to [Releases](https://github.com/Ricardo-abc/Niga-Launcher/releases/latest) t
 npm install
 ```
 
+### Generate Native Platform Files (Required for first-time run or build)
+
+Since the native platform folders (`/android`) are excluded by default in `.gitignore`, you must generate the Android native project structure before running or building the APK for the first time:
+
+```bash
+npx expo prebuild --platform android
+```
+
 ### Start Development Server
 
 ```bash
