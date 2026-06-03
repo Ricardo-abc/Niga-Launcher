@@ -46,7 +46,7 @@
 
 ### 下载 APK
 
-前往 [Releases](https://github.com/Ricardo-abc/Niga-Launcher/releases/latest) 下载最新版本 APK。
+前往 [Releases](https://github.com/Ricardo-abc/AlphaNative-/releases/latest) 下载最新版本 APK。
 
 ### 从源码构建
 

@@ -46,7 +46,7 @@ An alphabet navigation launcher app based on React Native (Expo), supporting qui
 
 ### Download APK
 
-Go to [Releases](https://github.com/Ricardo-abc/Niga-Launcher/releases/latest) to download the latest APK.
+Go to [Releases](https://github.com/Ricardo-abc/AlphaNative-/releases/latest) to download the latest APK.
 
 ### Build from Source
 
