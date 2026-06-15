@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Animated, View, AppState } from 'react-native';
 import { useSettingsContext } from '../context/SettingsContext';
 import { isLiveWallpaperActive } from '../modules/WallpaperBridge';
@@ -7,11 +7,22 @@ import { resolveDimmingColor } from '../hooks/useSettings';
 interface WallpaperBackgroundProps {
   scrollY?: Animated.Value;
   scrubOpacity?: Animated.Value;
+  isEditing?: boolean;
 }
 
-const WallpaperBackground: React.FC<WallpaperBackgroundProps> = ({ scrollY, scrubOpacity }) => {
+const WallpaperBackground: React.FC<WallpaperBackgroundProps> = ({ scrollY, scrubOpacity, isEditing = false }) => {
   const { settings } = useSettingsContext();
   const [isServiceActive, setIsServiceActive] = useState(false);
+  // 使用 React.useRef 保存动画值，防止重新创建
+  const editDimVal = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(editDimVal, {
+      toValue: isEditing ? 1 : 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }, [isEditing]);
 
   useEffect(() => {
     let isMounted = true;
@@ -88,6 +99,12 @@ const WallpaperBackground: React.FC<WallpaperBackgroundProps> = ({ scrollY, scru
     return 0;
   })();
 
+  // 融合编辑模式的暗化：编辑时直接平滑过渡到用户设定的最大暗度 maxDimming，非编辑时使用 base 动态值
+  const inverseEditDim = Animated.subtract(1, editDimVal);
+  const basePart = Animated.multiply(finalOpacity as any, inverseEditDim);
+  const editPart = Animated.multiply(editDimVal, maxDimming);
+  const combinedOpacity = Animated.add(basePart, editPart);
+
   const overlayColor = resolveDimmingColor(settings);
 
   // If our live wallpaper service is rendering the wallpaper, we shouldn't draw the background image in JS.
@@ -96,7 +113,7 @@ const WallpaperBackground: React.FC<WallpaperBackgroundProps> = ({ scrollY, scru
     if (isAlways) return null;
     return (
       <View style={styles.container} pointerEvents="none">
-        <Animated.View style={[styles.darkOverlay, { opacity: finalOpacity, backgroundColor: overlayColor }]} />
+        <Animated.View style={[styles.darkOverlay, { opacity: combinedOpacity, backgroundColor: overlayColor }]} />
       </View>
     );
   }
@@ -114,7 +131,7 @@ const WallpaperBackground: React.FC<WallpaperBackgroundProps> = ({ scrollY, scru
           style={styles.image}
           resizeMode="cover"
         />
-        <Animated.View style={[styles.darkOverlay, { opacity: finalOpacity, backgroundColor: overlayColor }]} />
+        <Animated.View style={[styles.darkOverlay, { opacity: combinedOpacity, backgroundColor: overlayColor }]} />
       </View>
     );
   }
@@ -122,7 +139,7 @@ const WallpaperBackground: React.FC<WallpaperBackgroundProps> = ({ scrollY, scru
   // If using system wallpaper (default), only render the dark overlay to dim the transparent window background
   return (
     <View style={styles.container} pointerEvents="none">
-      <Animated.View style={[styles.darkOverlay, { opacity: finalOpacity, backgroundColor: overlayColor }]} />
+      <Animated.View style={[styles.darkOverlay, { opacity: combinedOpacity, backgroundColor: overlayColor }]} />
     </View>
   );
 };

@@ -144,6 +144,7 @@
   "contextMenu": {
     "favorite": "Favorite",
     "unfavorite": "Unfavorite",
+    "editFavorites": "Edit Favorites",
     "appInfo": "App Info",
     "editNameIcon": "Edit Name / Icon",
     "editHint": "Tap to edit"
@@ -160,5 +161,26 @@
     "emptyIcon": "★",
     "emptyText": "No favorite apps yet",
     "emptyHint": "Long press an app to add it to favorites"
+  },
+  "search": {
+    "placeholder": "Search apps",
+    "pullHint": "Pull down to search apps",
+    "releaseHint": "Release to search",
+    "noResults": "No matching apps found",
+    "title": "Search",
+    "aiSuggestions": "AI Search Suggestions",
+    "aiSuggestionsDesc": "Add system AI search to app search",
+    "contacts": "Contact Search",
+    "contactsDesc": "Add contacts to app search",
+    "calculator": "Calculator",
+    "calculatorDesc": "Enter math expressions to get results",
+    "learnMore": "Learn More",
+    "calculatorResult": "Calculation Result",
+    "aiSearchQuery": "Search in System AI",
+    "copySuccess": "Copied to clipboard",
+    "aiApp": "AI Associated App",
+    "selectAiApp": "Select AI App",
+    "contactsAlert": "Contact search requires address book read permissions, which are not integrated in this native build.",
+    "autoDetect": "System Default"
   }
 }

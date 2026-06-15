@@ -81,6 +81,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   iconBorderRadius: 11,
   showTouchZone: false,
   showRailBounds: false,
+  searchAiSuggestions: false,
+  searchContacts: false,
+  searchCalculator: true,
+  searchAiAppPackage: "",
   logLevel: 'off',
 };
 

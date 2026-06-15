@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { AppAnimated as Animated } from './src/services/AnimationService';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import { BlurView } from 'expo-blur';
 
 import AppItem from './src/components/AppItem';
 import LetterRail, { LetterRailRef } from './src/components/LetterRail';
@@ -26,6 +27,7 @@ import SettingsView from './src/components/SettingsView';
 import AppContextMenu from './src/components/AppContextMenu';
 import EditAppDialog from './src/components/EditAppDialog';
 import WallpaperBackground from './src/components/WallpaperBackground';
+import SearchView from './src/components/SearchView';
 import EffectLayer from './src/effects/EffectLayer';
 import {
   loadInstalledApps,
@@ -34,6 +36,7 @@ import {
   launchApplication,
   buildFlatList,
   loadFavorites,
+  saveFavorites,
   addToFavorites,
   removeFromFavorites,
   isFavorite,
@@ -86,8 +89,65 @@ function AppContent() {
   const [editDialogVisible, setEditDialogVisible] = useState(false);
   const [editDialogApp, setEditDialogApp] = useState<AppInfo | null>(null);
   const [favorites, setFavorites] = useState<AppInfo[]>([]);
+  const [tempFavorites, setTempFavorites] = useState<AppInfo[]>([]);
   const [customizations, setCustomizations] = useState<AppCustomizations>({});
   const [favoritesRefreshKey, setFavoritesRefreshKey] = useState(0);
+
+  // 一体化编辑模式状态
+  const [isEditingFavorites, setIsEditingFavorites] = useState(false);
+  const [favoritesBackup, setFavoritesBackup] = useState<AppInfo[]>([]);
+
+  const isEditingFavoritesRef = useRef(isEditingFavorites);
+  isEditingFavoritesRef.current = isEditingFavorites;
+
+  const tempFavoritesRef = useRef<AppInfo[]>([]);
+  tempFavoritesRef.current = tempFavorites;
+
+  const favoritesRef = useRef<AppInfo[]>([]);
+  favoritesRef.current = favorites;
+
+  const handleStartEditFavorites = useCallback(() => {
+    setFavoritesBackup([...favorites]);
+    setTempFavorites([...favorites]);
+    setIsEditingFavorites(true);
+  }, [favorites]);
+
+  const handleCancelEditFavorites = useCallback(async () => {
+    setFavorites(favoritesBackup);
+    setTempFavorites(favoritesBackup);
+    setIsEditingFavorites(false);
+    await saveFavorites(favoritesBackup);
+    setFavoritesRefreshKey(k => k + 1);
+  }, [favoritesBackup]);
+
+  const handleDoneEditFavorites = useCallback(async () => {
+    setIsEditingFavorites(false);
+    setFavorites(tempFavoritesRef.current);
+    await saveFavorites(tempFavoritesRef.current);
+    setFavoritesRefreshKey(k => k + 1);
+  }, []);
+
+  const handleToggleAppFavorite = useCallback(async (app: AppInfo) => {
+    let newTemp: AppInfo[];
+    if (tempFavoritesRef.current.some(fav => fav.packageName === app.packageName)) {
+      newTemp = tempFavoritesRef.current.filter(fav => fav.packageName !== app.packageName);
+    } else {
+      newTemp = [...tempFavoritesRef.current, app];
+    }
+    setTempFavorites(newTemp);
+    await saveFavorites(newTemp);
+
+    // 如果当前滚动位置接近顶部，或者不在编辑模式，立即同步 favorites 状态
+    if (scrollOffsetRef.current < 10 || !isEditingFavoritesRef.current) {
+      setFavorites(newTemp);
+      setFavoritesRefreshKey(k => k + 1);
+    }
+  }, []);
+
+  const handleOrderChange = useCallback((newFavs: AppInfo[]) => {
+    setFavorites(newFavs);
+    setTempFavorites(newFavs);
+  }, []);
 
   // ===== Refs =====
   const scrollYAnim = useRef(new Animated.Value(0)).current;
@@ -122,6 +182,14 @@ function AppContent() {
   const scrollOffsetRef = useRef(0);
   const settingsRef = useRef(settings);
   const activeAlphabetRef = useRef(activeAlphabet);
+
+  const [searchActive, setSearchActive] = useState(false);
+  const searchActiveRef = useRef(searchActive);
+  searchActiveRef.current = searchActive;
+
+  const [searchPullThresholdPassed, setSearchPullThresholdPassed] = useState(false);
+  const searchPullAnim = useRef(new Animated.Value(0)).current;
+  const searchPullThresholdPassedRef = useRef(false);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -233,6 +301,16 @@ function AppContent() {
       if (editDialogVisible) { setEditDialogVisible(false); return true; }
       if (contextMenuVisible) { setContextMenuVisible(false); return true; }
       if (showSettings) { setShowSettings(false); return true; }
+      if (searchActive) { setSearchActive(false); return true; }
+      if (isEditingFavorites) {
+        // 返回键双击优化：若列表向下滚动过，第一次返回先回到顶部，第二次返回才保存退出
+        if (scrollOffsetRef.current > 15) {
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        } else {
+          handleDoneEditFavorites();
+        }
+        return true;
+      }
       if (settings.enableBackToFavorites && scrollOffsetRef.current > 0) {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
         return true;
@@ -241,7 +319,7 @@ function AppContent() {
     });
 
     return () => handler.remove();
-  }, [showSettings, settings.enableBackToFavorites, contextMenuVisible, editDialogVisible]);
+  }, [showSettings, settings.enableBackToFavorites, contextMenuVisible, editDialogVisible, searchActive, isEditingFavorites, handleDoneEditFavorites]);
 
   useEffect(() => {
     if (!loading && isLoaded) {
@@ -552,6 +630,76 @@ function AppContent() {
   const rightPanResponder = useRef(createPanHandler('right')).current;
   const leftPanResponder = useRef(createPanHandler('left')).current;
 
+  const searchPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (_, gs) => {
+        return (
+          !searchActiveRef.current &&
+          !isEditingFavoritesRef.current &&
+          scrollOffsetRef.current <= 1 &&
+          gs.dy > 3 &&
+          Math.abs(gs.dx) < Math.abs(gs.dy)
+        );
+      },
+      onMoveShouldSetPanResponderCapture: (_, gs) => {
+        return (
+          !searchActiveRef.current &&
+          !isEditingFavoritesRef.current &&
+          scrollOffsetRef.current <= 1 &&
+          gs.dy > 3 &&
+          Math.abs(gs.dx) < Math.abs(gs.dy)
+        );
+      },
+      onPanResponderGrant: () => {
+        searchPullThresholdPassedRef.current = false;
+        setSearchPullThresholdPassed(false);
+      },
+      onPanResponderMove: (_, gs) => {
+        const dy = gs.dy;
+        const pullDistance = Math.max(0, dy / (1 + dy / 300));
+        searchPullAnim.setValue(pullDistance);
+
+        const threshold = 70;
+        if (pullDistance >= threshold && !searchPullThresholdPassedRef.current) {
+          searchPullThresholdPassedRef.current = true;
+          setSearchPullThresholdPassed(true);
+          triggerHaptic(settingsRef.current.vibrationEffect, settingsRef.current.vibrationIntensity);
+        } else if (pullDistance < threshold && searchPullThresholdPassedRef.current) {
+          searchPullThresholdPassedRef.current = false;
+          setSearchPullThresholdPassed(false);
+        }
+      },
+      onPanResponderRelease: () => {
+        if (searchPullThresholdPassedRef.current) {
+          setSearchActive(true);
+        }
+        
+        Animated.spring(searchPullAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 200,
+          useNativeDriver: true,
+        }).start();
+
+        searchPullThresholdPassedRef.current = false;
+        setSearchPullThresholdPassed(false);
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(searchPullAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 200,
+          useNativeDriver: true,
+        }).start();
+
+        searchPullThresholdPassedRef.current = false;
+        setSearchPullThresholdPassed(false);
+      },
+    })
+  ).current;
+
   // ===== 列表滚动跟踪字母 =====
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (isSlidingRef.current) return;
@@ -674,20 +822,23 @@ function AppContent() {
     }
     if (item._type === 'app') {
       const appItem = item as any as AppInfo;
+      const isFav = (isEditingFavorites ? tempFavorites : favorites).some(fav => fav.packageName === appItem.packageName);
       return (
         <View>
           <AppItem
             item={appItem}
-            onPress={onLaunchApp}
+            onPress={isEditingFavorites ? () => handleToggleAppFavorite(appItem) : onLaunchApp}
             onLongPress={handleLongPressApp}
             customization={customizations[appItem.packageName]}
+            isEditing={isEditingFavorites}
+            isFavorite={isFav}
           />
           {settings.showDivider && <View style={styles.divider} />}
         </View>
       );
     }
     return null;
-  }, [onLaunchApp, handleLongPressApp, customizations, themeColor, settings.showDivider, settings.showHeaderDivider]);
+  }, [onLaunchApp, handleLongPressApp, customizations, themeColor, settings.showDivider, settings.showHeaderDivider, isEditingFavorites, favorites, tempFavorites, handleToggleAppFavorite]);
 
   const getItemLayout = useCallback((_: any, index: number) => ({
     length: flatItems[index]?._type === 'header' ? HEADER_HEIGHT : settings.appItemHeight,
@@ -705,7 +856,7 @@ function AppContent() {
   return (
     <View style={[styles.container, { backgroundColor: containerBg }]}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
-      <WallpaperBackground scrollY={scrollYAnim} scrubOpacity={scrubOpacity} />
+      <WallpaperBackground scrollY={scrollYAnim} scrubOpacity={scrubOpacity} isEditing={isEditingFavorites} />
 
       {settings.showTouchZone && (
         <>
@@ -716,8 +867,51 @@ function AppContent() {
 
       <View style={styles.gestureStripLeft} {...leftPanResponder.panHandlers} />
 
-      <View style={[styles.appArea, { backgroundColor: listBg }]}>
-        <Animated.View style={[styles.listContainer, { opacity: listOpacity }]}>
+      <View style={[styles.appArea, { backgroundColor: listBg }]} {...searchPanResponder.panHandlers}>
+        {/* 下拉搜索预览 */}
+        <Animated.View
+          style={[
+            styles.searchPreviewContainer,
+            {
+              opacity: searchPullAnim.interpolate({
+                inputRange: [0, 60],
+                outputRange: [0, 1],
+                extrapolate: 'clamp',
+              }),
+              transform: [
+                {
+                  scale: searchPullAnim.interpolate({
+                    inputRange: [0, 70],
+                    outputRange: [0.92, 1],
+                    extrapolate: 'clamp',
+                  }),
+                },
+                {
+                  translateY: searchPullAnim.interpolate({
+                    inputRange: [0, 100],
+                    outputRange: [10, 35],
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Text style={styles.searchPreviewIcon}>🔍</Text>
+          <Text style={styles.searchPreviewText}>
+            {searchPullThresholdPassed ? t('search.releaseHint') : t('search.pullHint')}
+          </Text>
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.listContainer,
+            {
+              opacity: listOpacity,
+              transform: [{ translateY: searchPullAnim }],
+            },
+          ]}
+        >
           <Animated.FlatList
             ref={flatListRef as any}
             data={flatItems}
@@ -740,6 +934,14 @@ function AppContent() {
                 onLongPressApp={handleLongPressApp}
                 customizations={customizations}
                 refreshKey={favoritesRefreshKey}
+                isEditing={isEditingFavorites}
+                favorites={favorites}
+                tempFavorites={tempFavorites}
+                allApps={cachedApps}
+                onToggleFavorite={handleToggleAppFavorite}
+                onOrderChange={handleOrderChange}
+                onCloseEdit={handleDoneEditFavorites}
+                onCancelEdit={handleCancelEditFavorites}
               />
             }
             onScroll={Animated.event(
@@ -747,7 +949,20 @@ function AppContent() {
               {
                 useNativeDriver: true,
                 listener: (e: any) => {
-                  scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
+                  const y = e.nativeEvent.contentOffset.y;
+                  scrollOffsetRef.current = y;
+                  
+                  if (isEditingFavoritesRef.current && y < favoritesHeightRef.current + 200) {
+                    const temp = tempFavoritesRef.current;
+                    const favs = favoritesRef.current;
+                    const isDifferent = temp.length !== favs.length ||
+                      temp.some((tApp, idx) => favs[idx]?.packageName !== tApp.packageName);
+                    
+                    if (isDifferent) {
+                      setFavorites(temp);
+                      setFavoritesRefreshKey(k => k + 1);
+                    }
+                  }
                 },
               }
             )}
@@ -797,7 +1012,7 @@ function AppContent() {
         isFavorite={contextMenuApp ? isFavorite(contextMenuApp.packageName, favorites) : false}
         customizations={customizations}
         onClose={handleCloseContextMenu}
-        onToggleFavorite={handleToggleFavorite}
+        onEditFavorites={handleStartEditFavorites}
         onEdit={handleOpenEdit}
         onSaveCustomization={handleSaveCustomization}
       />
@@ -810,6 +1025,57 @@ function AppContent() {
         onClose={() => setEditDialogVisible(false)}
         onSave={handleSaveCustomization}
       />
+
+      {/* Search Overlay */}
+      {searchActive && (
+        <SearchView
+          visible={searchActive}
+          onClose={() => setSearchActive(false)}
+          apps={cachedApps}
+          customizations={customizations}
+          onLaunchApp={onLaunchApp}
+          onLongPressApp={handleLongPressApp}
+          themeColor={themeColor}
+        />
+      )}
+
+      {isEditingFavorites && (
+        <>
+          <BlurView
+            intensity={35}
+            tint="dark"
+            style={[
+              styles.floatingHeader,
+              {
+                top: (StatusBar.currentHeight || 24) + 10,
+              }
+            ]}
+          >
+            <TouchableOpacity onPress={handleCancelEditFavorites} style={styles.headerBtn} activeOpacity={0.6}>
+              <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{t('contextMenu.editFavorites')}</Text>
+            <View style={styles.headerRight}>
+              <Text style={styles.selectedCountText}>{tempFavorites.length} 已选</Text>
+            </View>
+          </BlurView>
+
+          <TouchableOpacity
+            style={[
+              styles.floatingDoneButton,
+              {
+                backgroundColor: themeColor,
+                right: settings.railSide === 'right' ? GESTURE_STRIP_WIDTH + 16 : 20,
+              }
+            ]}
+            onPress={handleDoneEditFavorites}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.floatingDoneIcon}>✓</Text>
+            <Text style={styles.floatingDoneText}>{t('common.confirm')}</Text>
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   );
 }
@@ -839,8 +1105,29 @@ const styles = StyleSheet.create({
     paddingRight: GESTURE_STRIP_WIDTH + 8,
     zIndex: 5,
   },
-  listContainer: { flex: 1 },
+  listContainer: { flex: 1, zIndex: 2 },
   listContent: { paddingBottom: 80 },
+  searchPreviewContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+    flexDirection: 'row',
+  },
+  searchPreviewIcon: {
+    fontSize: 16,
+    marginRight: 6,
+    opacity: 0.8,
+  },
+  searchPreviewText: {
+    color: '#aaa',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   scrubOverlay: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
@@ -882,5 +1169,77 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0, 255, 0, 0.3)',
     zIndex: 1,
+  },
+  floatingDoneButton: {
+    position: 'absolute',
+    bottom: 30,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 6,
+    zIndex: 99,
+  },
+  floatingDoneIcon: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  floatingDoneText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  floatingHeader: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 99,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  headerBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  cancelBtnText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  headerRight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  selectedCountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

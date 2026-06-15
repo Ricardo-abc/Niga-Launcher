@@ -21,7 +21,10 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.nigalauncher"
+      "package": "com.anonymous.nigalauncher",
+      "permissions": [
+        "android.permission.QUERY_ALL_PACKAGES"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

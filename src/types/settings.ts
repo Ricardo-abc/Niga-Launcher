@@ -94,6 +94,10 @@ export interface AppSettings {
   iconBorderRadius: number;     // 范围: 0~24, 默认: 11
   showTouchZone: boolean;
   showRailBounds: boolean;
+  searchAiSuggestions: boolean;
+  searchContacts: boolean;
+  searchCalculator: boolean;
+  searchAiAppPackage: string;
   logLevel: 'off' | 'basic' | 'verbose';
 }
 

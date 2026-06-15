@@ -27,7 +27,7 @@ interface AppContextMenuProps {
   isFavorite: boolean;
   customizations: AppCustomizations;
   onClose: () => void;
-  onToggleFavorite: () => void;
+  onEditFavorites: () => void;
   onEdit: () => void;
   onSaveCustomization: (packageName: string, customization: AppCustomization) => void;
 }
@@ -38,7 +38,7 @@ const AppContextMenu: React.FC<AppContextMenuProps> = ({
   isFavorite,
   customizations,
   onClose,
-  onToggleFavorite,
+  onEditFavorites,
   onEdit,
   onSaveCustomization,
 }) => {
@@ -124,14 +124,14 @@ const AppContextMenu: React.FC<AppContextMenuProps> = ({
     }, 200);
   };
 
-  const handleToggleFavorite = () => {
+  const handleEditFavorites = () => {
     // 如果正在编辑名称，关闭编辑状态
     if (isEditingName) {
       setIsEditingName(false);
       setEditingName('');
     }
-    onToggleFavorite();
     onClose();
+    setTimeout(() => onEditFavorites(), 100);
   };
 
   const handleEdit = () => {
@@ -271,10 +271,10 @@ const AppContextMenu: React.FC<AppContextMenuProps> = ({
         <View style={styles.divider} />
 
         {/* Menu Items */}
-        <TouchableOpacity style={styles.menuItem} onPress={handleToggleFavorite} activeOpacity={0.6}>
-          <Text style={styles.menuIcon}>{isFavorite ? '★' : '☆'}</Text>
+        <TouchableOpacity style={styles.menuItem} onPress={handleEditFavorites} activeOpacity={0.6}>
+          <Text style={styles.menuIcon}>★</Text>
           <Text style={styles.menuText}>
-            {isFavorite ? t('contextMenu.unfavorite') : t('contextMenu.favorite')}
+            {t('contextMenu.editFavorites')}
           </Text>
         </TouchableOpacity>
 

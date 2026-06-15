@@ -1,11 +1,14 @@
 import { InstalledApps, RNLauncherKitHelper } from 'react-native-launcher-kit';
 import { pinyin } from 'pinyin-pro';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NativeModules } from 'react-native';
 import { ALPHABET } from '../constants/defaultSettings';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { AppInfo, AppCustomization, AppCustomizations, FlatItem, FlatListResult } from '../types/settings';
 export { FlatItem };
 import * as FileSystem from 'expo-file-system/legacy';
+
+const { UsageStatsModule } = NativeModules;
 
 const ICON_DIR = `${FileSystem.documentDirectory}app_icons/`;
 
@@ -299,9 +302,101 @@ export const buildFilteredList = (apps: AppInfo[], letter: string, headerHeight:
   };
 };
 
+/**
+ * 记录本地启动历史（7天内）
+ */
+export const recordAppLaunch = async (packageName: string): Promise<void> => {
+  try {
+    const historyStr = await AsyncStorage.getItem(STORAGE_KEYS.LAUNCH_HISTORY);
+    let history: { packageName: string; timestamp: number }[] = historyStr ? JSON.parse(historyStr) : [];
+    
+    const now = Date.now();
+    const cutoff = now - 7 * 24 * 60 * 60 * 1000;
+    
+    history = history.filter(item => item.timestamp > cutoff);
+    history.push({ packageName, timestamp: now });
+    
+    await AsyncStorage.setItem(STORAGE_KEYS.LAUNCH_HISTORY, JSON.stringify(history));
+  } catch (e) {
+    console.warn('[UsageStats] Failed to record app launch:', e);
+  }
+};
+
+/**
+ * 获取最近7天频繁使用的应用列表
+ */
+export const getFrequentlyUsedApps = async (apps: AppInfo[], limit: number = 8): Promise<{ apps: AppInfo[], hasPermission: boolean }> => {
+  try {
+    if (UsageStatsModule) {
+      const hasPermission = await UsageStatsModule.hasUsageStatsPermission();
+      if (hasPermission) {
+        const sysPackages: string[] = await UsageStatsModule.getFrequentApps(7, limit);
+        const freqApps: AppInfo[] = [];
+        for (const pkg of sysPackages) {
+          const found = apps.find(a => a.packageName === pkg);
+          if (found) {
+            freqApps.push(found);
+          }
+        }
+        if (freqApps.length > 0) {
+          return { apps: freqApps, hasPermission: true };
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[UsageStats] Failed to fetch usage stats from system:', e);
+  }
+
+  // 备选方案：本地 launch 历史记录
+  try {
+    const historyStr = await AsyncStorage.getItem(STORAGE_KEYS.LAUNCH_HISTORY);
+    if (historyStr) {
+      const history: { packageName: string; timestamp: number }[] = JSON.parse(historyStr);
+      const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const recentHistory = history.filter(item => item.timestamp > cutoff);
+      
+      const counts: Record<string, number> = {};
+      recentHistory.forEach(item => {
+        counts[item.packageName] = (counts[item.packageName] || 0) + 1;
+      });
+      
+      const sortedPackages = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+      const freqApps: AppInfo[] = [];
+      for (const pkg of sortedPackages) {
+        const found = apps.find(a => a.packageName === pkg);
+        if (found) {
+          freqApps.push(found);
+        }
+        if (freqApps.length >= limit) break;
+      }
+      return { apps: freqApps, hasPermission: false };
+    }
+  } catch (e) {
+    console.warn('[UsageStats] Failed to get local launch history:', e);
+  }
+
+  return { apps: [], hasPermission: false };
+};
+
+/**
+ * 引导申请使用情况访问权限
+ */
+export const requestUsageStatsPermission = async (): Promise<boolean> => {
+  try {
+    if (UsageStatsModule) {
+      return await UsageStatsModule.requestUsageStatsPermission();
+    }
+  } catch (e) {
+    console.warn('[UsageStats] Failed to request usage stats permission:', e);
+  }
+  return false;
+};
+
 export const launchApplication = (packageName: string) => {
   try {
     RNLauncherKitHelper.launchApplication(packageName);
+    // 异步记录应用启动
+    recordAppLaunch(packageName).catch(() => {});
   } catch (error) {
     console.error('[Launch] Error:', packageName, error);
   }

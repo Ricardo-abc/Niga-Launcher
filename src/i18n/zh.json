@@ -144,6 +144,7 @@
   "contextMenu": {
     "favorite": "收藏",
     "unfavorite": "取消收藏",
+    "editFavorites": "编辑收藏",
     "appInfo": "应用信息",
     "editNameIcon": "编辑名称 / 图标",
     "editHint": "点击编辑"
@@ -160,5 +161,26 @@
     "emptyIcon": "★",
     "emptyText": "还没有收藏的应用",
     "emptyHint": "在全部应用中长按应用可添加到收藏"
+  },
+  "search": {
+    "placeholder": "搜索应用",
+    "pullHint": "继续下拉以检索应用",
+    "releaseHint": "释放以进行搜索",
+    "noResults": "未找到匹配的应用程序",
+    "title": "搜索",
+    "aiSuggestions": "AI 搜索建议",
+    "aiSuggestionsDesc": "将系统 AI 搜索添加到应用搜索",
+    "contacts": "联系人搜索",
+    "contactsDesc": "将联系人添加到应用搜索",
+    "calculator": "计算器",
+    "calculatorDesc": "输入数学表达式即可获得结果",
+    "learnMore": "了解更多",
+    "calculatorResult": "计算结果",
+    "aiSearchQuery": "在系统 AI 中搜索",
+    "copySuccess": "已复制并复制结果到剪贴板",
+    "aiApp": "AI 关联应用",
+    "selectAiApp": "选择 AI 应用",
+    "contactsAlert": "联系人检索需要读取通讯录权限，暂未集成相关原生模块。",
+    "autoDetect": "系统默认"
   }
 }
